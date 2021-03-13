@@ -632,7 +632,7 @@ export class LaserShoot extends Rectangle {
             this.y + this.height > obj2Check.y);
     }
 }
-export class TopExplode extends Rectangle {
+export class TopExplosion extends Rectangle {
     constructor(x, y, w, h) {
         super();
         this.x = x;
@@ -644,7 +644,7 @@ export class TopExplode extends Rectangle {
         this.left = x;
         this.right = x + w;
         this.yV = 0;
-        this.type = 'TopExplode';
+        this.type = 'TopExplosion';
         this.enabled = false;
     }
     Update() {

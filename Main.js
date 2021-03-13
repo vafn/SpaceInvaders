@@ -1,5 +1,5 @@
 import { PlayerAI } from './AI.js';
-import { Game, World, Wall, Player, Ball, Text, Shooter, Alian, LaserShoot, TopExplode } from './Game.js';
+import { Game, World, Wall, Player, Ball, Text, Shooter, Alian, LaserShoot, TopExplosion } from './Game.js';
 import { Display } from './Display.js';
 import { Controller } from './Controller.js';
 
@@ -11,6 +11,7 @@ let world = null;
 let wallBottom = null;
 let shooter = null;
 let laserShoot = null;
+let topExplosion = null;
 let p1Score = null;
 let p2Score = null;
 let pauseGame = false;
@@ -70,6 +71,7 @@ function CreateWorld(c) {
 	wallBottom = new Wall(world.left, 700, world.width, 3, 'white', true);
 	shooter = new Shooter(world.left + (world.width - c.shooter.width) / 2, 640, c.shooter.width, c.shooter.height, 0, 0, c.shooter.color, 'right', sprites.shooter);
 	laserShoot = new LaserShoot(0, 0, c.laserShoot.width, c.laserShoot.height, c.laserShoot.color);
+	topExplosion = new TopExplosion(0, 0, 15, 10);
 	p1Score = new Text(world.left + world.width * 1 / 4, 0, '0', 'white', true, 24, 'Arial', true);
 	p2Score = new Text(world.left + world.width * 3 / 4, 0, '0', 'white', true, 24, 'Arial', true);
 
@@ -80,6 +82,7 @@ function CreateWorld(c) {
 	world.objects.push(wallBottom);
 	world.objects.push(shooter);
 	world.objects.push(laserShoot);
+	world.objects.push(topExplosion);
 	world.objects.push(p1Score);
 	world.objects.push(p2Score);
 	game.objects.push(world);
@@ -257,6 +260,8 @@ function Render() {
 			else if (gObj instanceof Shooter)
 				display.drawSprite(gObj);
 			else if (gObj instanceof Alian)
+				display.drawSprite(gObj);
+			else if (gObj instanceof TopExplosion)
 				display.drawSprite(gObj);
 			else if (gObj instanceof LaserShoot)
 				display.drawBox(gObj);
