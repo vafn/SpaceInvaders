@@ -28,7 +28,8 @@ const sprites = {
 	squid: { x: 22, y: 1, sWidth: 8, sHeight: 8, dWidth: 22, dHeight: 22, frames: [0, 1], spriteSheet: images },
 	crab: { x: 31, y: 1, sWidth: 11, sHeight: 8, dWidth: 30, dHeight: 22, frames: [0, 1], spriteSheet: images },
 	octopus: { x: 43, y: 1, sWidth: 12, sHeight: 8, dWidth: 32, dHeight: 27, frames: [0, 1], spriteSheet: images },
-	shooter: { x: 1, y: 1, sWidth: 13, sHeight: 8, dWidth: 32, dHeight: 20, frames: [0], spriteSheet: images }
+	shooter: { x: 1, y: 1, sWidth: 13, sHeight: 8, dWidth: 32, dHeight: 20, frames: [0], spriteSheet: images },
+	topExplosion: { x: 73, y: 1, sWidth: 8, sHeight: 8, dWidth: 22, dHeight: 22, frames: [0, 1], spriteSheet: images }
 }
 const worlConfig = {
 	world: { width: 545, height: 727 },
@@ -71,13 +72,19 @@ function CreateWorld(c) {
 	wallBottom = new Wall(world.left, 700, world.width, 3, 'white', true);
 	shooter = new Shooter(world.left + (world.width - c.shooter.width) / 2, 640, c.shooter.width, c.shooter.height, 0, 0, c.shooter.color, 'right', sprites.shooter);
 	laserShoot = new LaserShoot(0, 0, c.laserShoot.width, c.laserShoot.height, c.laserShoot.color);
-	topExplosion = new TopExplosion(0, 0, 15, 10);
+	topExplosion = new TopExplosion(0, 0, 22, 26, sprites.topExplosion);
 	p1Score = new Text(world.left + world.width * 1 / 4, 0, '0', 'white', true, 24, 'Arial', true);
 	p2Score = new Text(world.left + world.width * 3 / 4, 0, '0', 'white', true, 24, 'Arial', true);
 
 	world.dispacher = evtDispacher;
 
 	CreateAlians();
+
+	topExplosion.animateEnded = () => {
+		setTimeout(() => {
+			topExplosion.enabled = false;
+		}, 100);
+	};
 
 	world.objects.push(wallBottom);
 	world.objects.push(shooter);
@@ -239,6 +246,14 @@ function Render() {
 		shooter.x = world.right - shooter.width
 
 	if (laserShoot.y < 110) {
+		if (!topExplosion.enabled) {
+			topExplosion.lastFrameChangedTime = new Date().getTime();
+			topExplosion.frameIndex = 0;
+			topExplosion.enabled = true;
+			topExplosion.animate = true;
+		}
+		topExplosion.x = laserShoot.x - topExplosion.width / 2;
+		topExplosion.y = laserShoot.y - topExplosion.height / 2;
 		laserShoot.enabled = false;
 		laserShoot.y = shooter.y - laserShoot.height;
 	}

@@ -8,21 +8,39 @@ export class Game {
         this.objects = [];
         this.dispacher = null;
         this.sprite;
+        this.animate = false;
         this.frameIndex = 0;
         this.frameCount = 0;
         this.framePerSec = 0;
+        this.repeat = 0;
+        this.repeatCount = 0;
         this.lastFrameChangedTime = new Date().getTime();
+        this.animateEnded = ()=> {};
     }
     Update(counter) {
         this.objects.forEach(object => object.Update());
     }
     UpdateSprite() {
-        let now = new Date().getTime();
-        if (this.framePerSec > 0 && now - this.lastFrameChangedTime >= 1000 / this.framePerSec) {
-            this.lastFrameChangedTime = now;
-            ++this.frameIndex;
-            if (this.frameIndex >= this.frameCount)
-                this.frameIndex = 0;
+        if (this.animate) {
+            let now = new Date().getTime();
+            if (this.framePerSec > 0 && now - this.lastFrameChangedTime >= 1000 / this.framePerSec) {
+                this.lastFrameChangedTime = now;
+                ++this.frameIndex;
+                if (this.frameIndex >= this.frameCount) {
+                    if (this.repeat > 0) {
+                        this.repeatCount++;
+                        if (this.repeatCount === this.repeat) {
+                            this.animate = false;
+                            this.repeatCount = 0;
+                            this.frameIndex = this.frameCount - 1;
+                            this.animateEnded();
+                        }
+                        else
+                            this.frameIndex = 0;
+                    } else
+                        this.frameIndex = 0;
+                }
+            }
         }
     }
     Beep() {
@@ -442,7 +460,7 @@ export class Shooter extends Rectangle {
         this.shoot;
         this.ai;
         this.colidFrom = colidFrom;
-        this.sprite = sprite;   
+        this.sprite = sprite;
     }
     Update() {
         this.UpdateLocation();
@@ -633,7 +651,7 @@ export class LaserShoot extends Rectangle {
     }
 }
 export class TopExplosion extends Rectangle {
-    constructor(x, y, w, h) {
+    constructor(x, y, w, h, sprite) {
         super();
         this.x = x;
         this.y = y;
@@ -646,8 +664,12 @@ export class TopExplosion extends Rectangle {
         this.yV = 0;
         this.type = 'TopExplosion';
         this.enabled = false;
+        this.sprite = sprite;
+		this.frameCount = 2;
+		this.framePerSec = 20;
+        this.repeat = 1;
     }
     Update() {
-        
+        this.UpdateSprite();        
     }
 }
