@@ -8,7 +8,7 @@ export class Game {
         this.objects = [];
         this.dispacher = null;
         this.sprite;
-        this.animate = false;
+        this.animate = true;
         this.frameIndex = 0;
         this.frameCount = 0;
         this.framePerSec = 0;
