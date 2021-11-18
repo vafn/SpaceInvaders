@@ -1,5 +1,5 @@
 import { PlayerAI } from './AI.js';
-import { Game, World, Wall, Player, Ball, Text, Shooter, Alian, LaserShoot, TopExplosion } from './Game.js';
+import { Game, World, Wall, Player, Ball, Text, Shooter, Alian, LaserShoot, TopExplosion, AlianGrid, AlianShoot,Explosion } from './Game.js';
 import { Display } from './Display.js';
 import { Controller } from './Controller.js';
 
@@ -16,7 +16,7 @@ let p1Score = null;
 let p2Score = null;
 let pauseGame = false;
 const alians = [];
-const evtDispacher = new EventTarget();
+const evtDispatcher = new EventTarget();
 let docWidth = 0;
 let docHeight = 0;
 let waveNo = 0;
@@ -29,14 +29,17 @@ const sprites = {
 	crab: { x: 31, y: 1, sWidth: 11, sHeight: 8, dWidth: 30, dHeight: 22, frames: [0, 1], spriteSheet: images },
 	octopus: { x: 43, y: 1, sWidth: 12, sHeight: 8, dWidth: 32, dHeight: 27, frames: [0, 1], spriteSheet: images },
 	shooter: { x: 1, y: 1, sWidth: 13, sHeight: 8, dWidth: 32, dHeight: 20, frames: [0], spriteSheet: images },
-	topExplosion: { x: 73, y: 1, sWidth: 8, sHeight: 8, dWidth: 22, dHeight: 22, frames: [0, 1], spriteSheet: images }
+	topExplosion: { x: 73, y: 1, sWidth: 8, sHeight: 8, dWidth: 22, dHeight: 22, frames: [0, 1], spriteSheet: images },
+	explosion: { x: 73, y: 1, sWidth: 8, sHeight: 8, dWidth: 22, dHeight: 22, frames: [0, 1], spriteSheet: images }
 }
 const worlConfig = {
 	world: { width: 545, height: 727 },
 	shooter: { width: 32, height: 20, color: 'red' },
-	laserShoot: { width: 1, height: 25, color: 'white' }
+	laserShoot: { width: 1, height: 25, color: 'white' },
+	alianShoot: { width: 3, height: 25, color: 'yellow' }
 };
 let liveAlians = 0;
+let alianGrid = new AlianGrid(5, 11);
 
 images.onload = () => {
 	///
@@ -55,7 +58,6 @@ function OnLoad() {
 	// breakpoint on attribute
 	//debug
 	*/
-
 
 	canvas = document.createElement('canvas');
 	document.body.insertBefore(canvas, document.body.firstChild);
@@ -76,9 +78,44 @@ function CreateWorld(c) {
 	p1Score = new Text(world.left + world.width * 1 / 4, 0, '0', 'white', true, 24, 'Arial', true);
 	p2Score = new Text(world.left + world.width * 3 / 4, 0, '0', 'white', true, 24, 'Arial', true);
 
-	world.dispacher = evtDispacher;
+	world.dispatcher = evtDispatcher;
 
-	CreateAlians();
+	let alianConfig = {
+		index: 0,
+		type: 'Alian',
+		race: 'Squid',
+		x: waveStartX + (32 - 22) / 2,
+		y: firstWaveY,
+		width: 24,
+		height: 24,
+		xV: 7.5,
+		yV: 0,
+		color: 'yellow',
+		dispatcher: evtDispatcher,
+		sprite: sprites.squid,
+		frameCount: 2,
+		framePerSec: 1.3,
+		grid: alianGrid,
+		Shoot: (alian) => {
+			const aShoot = new AlianShoot(alian.left + (alian.width / 2) - c.alianShoot.width / 2, alian.bottom, c.alianShoot.width, c.alianShoot.height, c.alianShoot.color);
+			aShoot.onExplode = (ashoot) => {
+				console.log(ashoot)
+				console.log('Booom');
+				const explosion = new Explosion(ashoot.left + ashoot.width / 2 - 22 / 2, ashoot.bottom - 26 / 2 , 22, 26, sprites.topExplosion);
+				explosion.lastFrameChangedTime = new Date().getTime();
+				explosion.frameIndex = 0;
+				explosion.animate = true;
+					explosion.animateEnded = () => {
+					setTimeout(() => {
+						explosion.enabled = false;
+					}, 100);
+				};
+				world.objects.push(explosion);
+			}
+			world.objects.push(aShoot);
+		}
+	};
+	CreateAlians(alianConfig);
 
 	topExplosion.animateEnded = () => {
 		setTimeout(() => {
@@ -94,22 +131,10 @@ function CreateWorld(c) {
 	world.objects.push(p2Score);
 	game.objects.push(world);
 }
-function CreateAlians() {
-	let config = {
-		type: 'Alian',
-		race: 'Squid',
-		x: waveStartX + (32 - 22) / 2,
-		y: firstWaveY,
-		width: 24,
-		height: 24,
-		xV: 7.5,
-		yV: 0,
-		color: 'yellow',
-		dispacher: evtDispacher,
-		sprite: sprites.squid,
-		frameCount: 2,
-		framePerSec: 1.3
-	};
+function CreateAlians(config) {
+
+	//console.log(config)
+
 	AddAlianRow(config);
 	config.x = waveStartX;
 	config.race = 'Crab';
@@ -135,6 +160,7 @@ function AddAlianRow(config) {
 		world.objects.push(alian);
 		alians.push(alian);
 		config.x += 36 + 3;
+		config.index++;
 	}
 	config.x = xBak;
 }
@@ -155,7 +181,8 @@ function SendNextAliansWave() {
 }
 function AddEvents() {
 	window.addEventListener('resize', () => Resize(canvas, world));
-	evtDispacher.addEventListener('AnAlianKilled', (event) => {
+	evtDispatcher.addEventListener('AnAlianKilled', (event) => {
+		alianGrid.SetAlianKilled(event.detail.alianIndex)
 		const speed = --liveAlians > 0 ? Math.sign(alians[0].xV) * (0.8 + 378 / liveAlians ** 1.01) : 0;
 		alians.forEach(alian => alian.xV = speed);
 	});
@@ -221,6 +248,7 @@ function Render() {
 
 	let distToRight = 10000;
 	let distToLeft = 10000;
+	
 	alians.forEach(gObj => {
 		if (gObj.enabled) {
 			if (world.right - gObj.right < distToRight)
@@ -229,6 +257,7 @@ function Render() {
 				distToLeft = gObj.left - world.left;
 		}
 	});
+
 	if (distToLeft < 0 || distToRight < 0) {
 		alians.forEach(alian => {
 			alian.xV = -alian.xV;
@@ -280,8 +309,24 @@ function Render() {
 				display.drawSprite(gObj);
 			else if (gObj instanceof LaserShoot)
 				display.drawBox(gObj);
+			else if (gObj instanceof AlianShoot)
+				display.drawBox(gObj);
+			else if (gObj instanceof Explosion)
+				display.drawSprite(gObj);
 		}
 	});
+
+
+
+	world.objects.forEach((gObj, index) => {
+        if (gObj instanceof AlianShoot) {
+			if (!gObj.enabled)
+				world.objects.splice(index, 1);
+			else if (gObj.bottom > wallBottom.y)
+				gObj.Explode();
+        }
+    });
+
 	display.render();
 	//console.timeEnd('Render');
 }
