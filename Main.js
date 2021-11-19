@@ -14,27 +14,27 @@ let laserShoot = null;
 let topExplosion = null;
 let p1Score = null;
 let p2Score = null;
-let pauseGame = false;
+let gamePaused = false;
 const alians = [];
 const evtDispatcher = new EventTarget();
 let docWidth = 0;
 let docHeight = 0;
 let waveNo = 0;
-const firstWaveY = 166;
+const firstWaveY = 164;
 const waveStartX = 62;
 const waveAdvance = 25;
 var images = new Image();
 const sprites = {
-	squid: { x: 22, y: 1, sWidth: 8, sHeight: 8, dWidth: 22, dHeight: 22, frames: [0, 1], spriteSheet: images },
-	crab: { x: 31, y: 1, sWidth: 11, sHeight: 8, dWidth: 30, dHeight: 22, frames: [0, 1], spriteSheet: images },
-	octopus: { x: 43, y: 1, sWidth: 12, sHeight: 8, dWidth: 32, dHeight: 27, frames: [0, 1], spriteSheet: images },
-	shooter: { x: 1, y: 1, sWidth: 13, sHeight: 8, dWidth: 32, dHeight: 20, frames: [0], spriteSheet: images },
+	squid: { x: 22, y: 1, sWidth: 8, sHeight: 8, dWidth: 24, dHeight: 24, frames: [0, 1], spriteSheet: images },
+	crab: { x: 31, y: 1, sWidth: 11, sHeight: 8, dWidth: 33, dHeight: 24, frames: [0, 1], spriteSheet: images },
+	octopus: { x: 43, y: 1, sWidth: 12, sHeight: 8, dWidth: 36, dHeight: 24, frames: [0, 1], spriteSheet: images },
+	shooter: { x: 1, y: 1, sWidth: 13, sHeight: 8, dWidth: 39, dHeight: 24, frames: [0], spriteSheet: images },
 	topExplosion: { x: 73, y: 1, sWidth: 8, sHeight: 8, dWidth: 22, dHeight: 22, frames: [0, 1], spriteSheet: images },
 	explosion: { x: 73, y: 1, sWidth: 8, sHeight: 8, dWidth: 22, dHeight: 22, frames: [0, 1], spriteSheet: images }
 }
 const worlConfig = {
-	world: { width: 545, height: 727 },
-	shooter: { width: 32, height: 20, color: 'red' },
+	world: { width: 669, height: 727 },
+	shooter: { width: 39, height: 24, color: 'red' },
 	laserShoot: { width: 1, height: 25, color: 'white' },
 	alianShoot: { width: 3, height: 25, color: 'yellow' }
 };
@@ -47,6 +47,13 @@ images.onload = () => {
 images.src = 'Sprites.png';
 
 window.addEventListener('load', () => OnLoad());
+
+document.addEventListener('visibilitychange', (event) => {
+    if (document.hidden)
+		PauseGame(0);
+    else
+		PlayGame(0);
+});
 
 function OnLoad() {
 	/*
@@ -71,10 +78,10 @@ function OnLoad() {
 }
 function CreateWorld(c) {
 	world = new World(0, 0, c.world.width, c.world.height);
-	wallBottom = new Wall(world.left, 700, world.width, 3, 'white', true);
-	shooter = new Shooter(world.left + (world.width - c.shooter.width) / 2, 640, c.shooter.width, c.shooter.height, 0, 0, c.shooter.color, 'right', sprites.shooter);
+	wallBottom = new Wall(world.left, 694, world.width, 3, 'white', true);
+	shooter = new Shooter(world.left + (world.width - c.shooter.width) / 2, 629, c.shooter.width, c.shooter.height, 0, 0, c.shooter.color, 'right', sprites.shooter);
 	laserShoot = new LaserShoot(0, 0, c.laserShoot.width, c.laserShoot.height, c.laserShoot.color);
-	topExplosion = new TopExplosion(0, 0, 22, 26, sprites.topExplosion);
+	topExplosion = new TopExplosion(0, 83, 22, 26, sprites.topExplosion);
 	p1Score = new Text(world.left + world.width * 1 / 4, 0, '0', 'white', true, 24, 'Arial', true);
 	p2Score = new Text(world.left + world.width * 3 / 4, 0, '0', 'white', true, 24, 'Arial', true);
 
@@ -97,10 +104,8 @@ function CreateWorld(c) {
 		framePerSec: 1.3,
 		grid: alianGrid,
 		Shoot: (alian) => {
-			const aShoot = new AlianShoot(alian.left + (alian.width / 2) - c.alianShoot.width / 2, alian.bottom, c.alianShoot.width, c.alianShoot.height, c.alianShoot.color);
+			const aShoot = new AlianShoot(alian.left + (alian.width / 2) - c.alianShoot.width / 2, alian.y + alian.height, c.alianShoot.width, c.alianShoot.height, c.alianShoot.color);
 			aShoot.onExplode = (ashoot) => {
-				console.log(ashoot)
-				console.log('Booom');
 				const explosion = new Explosion(ashoot.left + ashoot.width / 2 - 22 / 2, ashoot.bottom - 26 / 2 , 22, 26, sprites.topExplosion);
 				explosion.lastFrameChangedTime = new Date().getTime();
 				explosion.frameIndex = 0;
@@ -113,6 +118,8 @@ function CreateWorld(c) {
 				world.objects.push(explosion);
 			}
 			world.objects.push(aShoot);
+			//console.log(alian)
+			//PauseGame(2);
 		}
 	};
 	CreateAlians(alianConfig);
@@ -139,17 +146,17 @@ function CreateAlians(config) {
 	config.x = waveStartX;
 	config.race = 'Crab';
 	config.sprite = sprites.crab;
-	config.width = 33;
-	config.y += 45;
+	config.width = 32;
+	config.y += 48;
 	AddAlianRow(config);
-	config.y += 45;
+	config.y += 48;
 	AddAlianRow(config);
 	config.race = 'Octopus';
 	config.sprite = sprites.octopus;
 	config.width = 36;
-	config.y += 45;
+	config.y += 48;
 	AddAlianRow(config);
-	config.y += 45;
+	config.y += 48;
 	AddAlianRow(config);
 	liveAlians = alians.length;
 }
@@ -159,7 +166,7 @@ function AddAlianRow(config) {
 		const alian = new Alian(config);
 		world.objects.push(alian);
 		alians.push(alian);
-		config.x += 36 + 3;
+		config.x += 36 + 12;
 		config.index++;
 	}
 	config.x = xBak;
@@ -225,66 +232,89 @@ function ShootLaser() {
 		laserShoot.yV = -1200;
 	}
 }
+
+let pauseEnabled = true;
+
 function Render() {
 	//console.time('Render');
 	window.requestAnimationFrame(Render);
 
-	if (controller.isPressed('ArrowRight'))
-		shooter.moveRight();
-	if (controller.isPressed('ArrowLeft'))
-		shooter.moveLeft();
-	if (controller.isPressed('ArrowUp'))
-		shooter.y -= 4;
-	if (controller.isPressed('ArrowDown'))
-		shooter.y += 4;
-	if (controller.isPressed(' '))
-		ShootLaser();
+	if (controller.isPressed('p')) {
+		if (pauseEnabled) {
+			if (gamePaused)
+				PlayGame(1);
+			else
+				PauseGame(1);
 
-	if (!pauseGame)
-		game.Update();
-
-	if (!alians.some(gObj => gObj.enabled))
-		SendNextAliansWave();
-
-	let distToRight = 10000;
-	let distToLeft = 10000;
-	
-	alians.forEach(gObj => {
-		if (gObj.enabled) {
-			if (world.right - gObj.right < distToRight)
-				distToRight = world.right - gObj.right;
-			if (gObj.left - world.left < distToLeft)
-				distToLeft = gObj.left - world.left;
+			pauseEnabled = false;
+			setTimeout(() => {
+				pauseEnabled = true;
+			}, 100);
 		}
-	});
-
-	if (distToLeft < 0 || distToRight < 0) {
-		alians.forEach(alian => {
-			alian.xV = -alian.xV;
-			alian.y += alian.height * 0.2;
-			if (distToRight < 0)
-				alian.x += distToRight;
-			else if (distToLeft < 0)
-				alian.x -= distToLeft;
-		})
 	}
 
-	if (shooter.left < world.left)
-		shooter.x = world.x
-	else if (shooter.right > world.right)
-		shooter.x = world.right - shooter.width
+	if (!gamePaused) {
+		if (controller.isPressed('ArrowRight'))
+			shooter.moveRight();
+		if (controller.isPressed('ArrowLeft'))
+			shooter.moveLeft();
+		if (controller.isPressed('ArrowUp'))
+			shooter.y -= 4;
+		if (controller.isPressed('ArrowDown'))
+			shooter.y += 4;
+		if (controller.isPressed(' '))
+			ShootLaser();
+	}
 
-	if (laserShoot.y < 110) {
-		if (!topExplosion.enabled) {
-			topExplosion.lastFrameChangedTime = new Date().getTime();
-			topExplosion.frameIndex = 0;
-			topExplosion.enabled = true;
-			topExplosion.animate = true;
+	game.Update();
+
+
+	if (!gamePaused) {
+
+		if (!alians.some(gObj => gObj.enabled))
+			SendNextAliansWave();
+
+		let distToRight = 10000;
+		let distToLeft = 10000;
+		
+		alians.forEach(gObj => {
+			if (gObj.enabled) {
+				if (world.right - gObj.right < distToRight)
+					distToRight = world.right - gObj.right;
+				if (gObj.left - world.left < distToLeft)
+					distToLeft = gObj.left - world.left;
+			}
+		});
+
+		if (distToLeft < 0 || distToRight < 0) {
+			alians.forEach(alian => {
+				alian.xV = -alian.xV;
+				alian.y += alian.height * 0.2;
+				if (distToRight < 0)
+					alian.x += distToRight;
+				else if (distToLeft < 0)
+					alian.x -= distToLeft;
+			})
 		}
-		topExplosion.x = laserShoot.x - topExplosion.width / 2;
-		topExplosion.y = laserShoot.y - topExplosion.height / 2;
-		laserShoot.enabled = false;
-		laserShoot.y = shooter.y - laserShoot.height;
+
+		if (shooter.left < world.left)
+			shooter.x = world.x
+		else if (shooter.right > world.right)
+			shooter.x = world.right - shooter.width
+
+		if (laserShoot.y < 103) {
+			if (!topExplosion.enabled) {
+				topExplosion.lastFrameChangedTime = new Date().getTime();
+				topExplosion.frameIndex = 0;
+				topExplosion.enabled = true;
+				topExplosion.animate = true;
+			}
+			topExplosion.x = laserShoot.x - topExplosion.width / 2;
+			//topExplosion.y = laserShoot.y - topExplosion.height / 2;
+			//topExplosion.y = 83;
+			laserShoot.enabled = false;
+			laserShoot.y = shooter.y - laserShoot.height;
+		}
 	}
 
 	display.clear();
@@ -316,8 +346,6 @@ function Render() {
 		}
 	});
 
-
-
 	world.objects.forEach((gObj, index) => {
         if (gObj instanceof AlianShoot) {
 			if (!gObj.enabled)
@@ -329,6 +357,16 @@ function Render() {
 
 	display.render();
 	//console.timeEnd('Render');
+}
+function PauseGame(pa) {
+	gamePaused = true;
+	world.objects.forEach((gObj, index) => gObj.SetPause(gamePaused));
+	console.log('Paused: ' + pa);
+}
+function PlayGame(pa) {
+	gamePaused = false;
+	world.objects.forEach((gObj, index) => gObj.SetPause(gamePaused));
+	console.log('Resummed: ' + pa);
 }
 //558
 //545	487

@@ -16,9 +16,13 @@ export class Game {
         this.repeatCount = 0;
         this.lastFrameChangedTime = new Date().getTime();
         this.animateEnded = () => {};
+        this.paused = false;
     }
-    Update(counter) {
+    Update() {
         this.objects.forEach((object) => object.Update());
+    }
+    SetPause(paused) {
+        this.paused = paused;
     }
     UpdateSprite() {
         if (this.animate) {
@@ -591,6 +595,8 @@ export class Alian extends Rectangle {
         this.dispatcher = null;
         this.index = -1;
         this.grid;
+        this.shootIntervalMin = 4000;
+        this.shootIntervalMax = 8000;
         this.shootInterval = 8000;
         this.lastTry2Shoot = new Date().getTime() - Math.floor(Math.random() * this.shootInterval);
         this.Shoot;
@@ -646,20 +652,29 @@ export class Alian extends Rectangle {
         const now = new Date().getTime();
         const tPassed = now - this.lastUpdate;
         this.lastUpdate = now;
-        this._x = this._x + (this.xV * tPassed) / 1000;
-        this.y = this.y + (this.yV * tPassed) / 1000;
-        this.top = this.y;
-        this.bottom = this.y + this.height;
-        this.left = this._x;
-        this.right = this._x + this.width;
+        if (!this.paused) {
+            this._x = this._x + (this.xV * tPassed) / 1000;
+            this.y = this.y + (this.yV * tPassed) / 1000;
+            this.top = this.y;
+            this.bottom = this.y + this.height;
+            this.left = this._x;
+            this.right = this._x + this.width;
+        }
     }
     UpdateShooting() {
         const now = new Date().getTime();
         const tPassed = now - this.lastTry2Shoot;
-        if (tPassed > this.shootInterval) {
-            this.lastTry2Shoot = now;
-            if (this.grid && this.grid.CanFire(this))
-                this.Shoot(this);
+        if (this.paused) {
+            this.lastTry2Shoot = new Date().getTime() - Math.floor(Math.random() * this.shootInterval);
+            //this.lastTry2Shoot = now;
+        }
+        else {
+            if (tPassed > this.shootInterval) {
+                this.shootInterval = this.shootIntervalMin + Math.floor(Math.random() * (this.shootIntervalMax - this.shootIntervalMin));
+                this.lastTry2Shoot = now;
+                if (this.grid && this.grid.CanFire(this))
+                    this.Shoot(this);
+            }
         }
     }
     set x(value) {
@@ -697,9 +712,11 @@ export class LaserShoot extends Rectangle {
             let now = new Date().getTime();
             let tPassed = now - this.lastUpdate;
             this.lastUpdate = now;
-            this.y = this.y + (this.yV * tPassed) / 1000;
-            this.top = this.y;
-            this.bottom = this.y + this.height;
+            if (!this.paused) {
+                this.y = this.y + (this.yV * tPassed) / 1000;
+                this.top = this.y;
+                this.bottom = this.y + this.height;
+            }
         }
     }
     isColid(obj2Check) {
@@ -796,9 +813,11 @@ export class AlianShoot extends Rectangle {
             let now = new Date().getTime();
             let tPassed = now - this.lastUpdate;
             this.lastUpdate = now;
-            this.y = this.y + (this.yV * tPassed) / 1000;
-            this.top = this.y;
-            this.bottom = this.y + this.height;
+            if (!this.paused) {
+                this.y = this.y + (this.yV * tPassed) / 1000;
+                this.top = this.y;
+                this.bottom = this.y + this.height;
+            }
         }
     }
     isColid(obj2Check) {
