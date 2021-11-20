@@ -17,6 +17,7 @@ export class Game {
         this.lastFrameChangedTime = new Date().getTime();
         this.animateEnded = () => {};
         this.paused = false;
+        this.Garbage = false;
     }
     Update() {
         this.objects.forEach((object) => object.Update());
@@ -27,10 +28,7 @@ export class Game {
     UpdateSprite() {
         if (this.animate) {
             let now = new Date().getTime();
-            if (
-                this.framePerSec > 0 &&
-                now - this.lastFrameChangedTime >= 1000 / this.framePerSec
-            ) {
+            if (this.framePerSec > 0 && now - this.lastFrameChangedTime >= 1000 / this.framePerSec) {
                 this.lastFrameChangedTime = now;
                 ++this.frameIndex;
                 if (this.frameIndex >= this.frameCount) {
@@ -41,8 +39,10 @@ export class Game {
                             this.repeatCount = 0;
                             this.frameIndex = this.frameCount - 1;
                             this.animateEnded();
-                        } else this.frameIndex = 0;
-                    } else this.frameIndex = 0;
+                        } else
+                            this.frameIndex = 0;
+                    } else
+                        this.frameIndex = 0;
                 }
             }
         }
@@ -102,12 +102,10 @@ export class World extends Game {
                             if (destinationObject !== object) {
                                 //check against itself?
                                 if (object.type === 'LaserShoot') {
-                                    if (
-                                        destinationObject.type === 'Alian' &&
-                                        object.isColid(destinationObject)
-                                    ) {
+                                    if (destinationObject.type === 'Alian' &&object.isColid(destinationObject)) {
                                         object.enabled = false;
-                                        destinationObject.enabled = false;
+                                        //destinationObject.enabled = false;
+                                        destinationObject.Explode();
                                         this.dispatcher.dispatchEvent(
                                             new CustomEvent('AnAlianKilled', { detail: {alianIndex: destinationObject.index}})
                                         );
@@ -600,31 +598,25 @@ export class Alian extends Rectangle {
         this.shootInterval = 8000;
         this.lastTry2Shoot = new Date().getTime() - Math.floor(Math.random() * this.shootInterval);
         this.Shoot;
+        this.onExplode = () => {};
 
         if (typeof config !== 'undefined') {
             if (typeof config.type !== 'undefined') this.type = config.type;
             if (typeof config.race !== 'undefined') this.race = config.race;
-            if (typeof config.dispatcher !== 'undefined')
-                this.dispatcher = config.dispatcher;
+            if (typeof config.dispatcher !== 'undefined') this.dispatcher = config.dispatcher;
             if (typeof config.color !== 'undefined') this.color = config.color;
             if (typeof config.x !== 'undefined') this._x = config.x;
             if (typeof config.y !== 'undefined') this.y = config.y;
             if (typeof config.xV !== 'undefined') this.xV = config.xV;
             if (typeof config.yV !== 'undefined') this.yV = config.yV;
             if (typeof config.width !== 'undefined') this.width = config.width;
-            if (typeof config.height !== 'undefined')
-                this.height = config.height;
-            if (typeof config.sprite !== 'undefined')
-                this.sprite = config.sprite;
-            if (typeof config.frameCount !== 'undefined')
-                this.frameCount = config.frameCount;
-            if (typeof config.framePerSec !== 'undefined')
-                this.framePerSec = config.framePerSec;
+            if (typeof config.height !== 'undefined') this.height = config.height;
+            if (typeof config.sprite !== 'undefined') this.sprite = config.sprite;
+            if (typeof config.frameCount !== 'undefined') this.frameCount = config.frameCount;
+            if (typeof config.framePerSec !== 'undefined') this.framePerSec = config.framePerSec;
             if (typeof config.index !== 'undefined') this.index = config.index;
-            if (typeof config.grid !== 'undefined')
-                this.grid = config.grid;
-            if (typeof config.Shoot !== 'undefined')
-                this.Shoot = config.Shoot;
+            if (typeof config.grid !== 'undefined') this.grid = config.grid;
+            if (typeof config.Shoot !== 'undefined') this.Shoot = config.Shoot;
         }
         this.top = this.y;
         this.left = this._x;
@@ -644,9 +636,11 @@ export class Alian extends Rectangle {
         });
     }
     Update() {
-        this.UpdateLocation();
-        this.UpdateSprite();
-        this.UpdateShooting();
+        if (this.enabled) {
+            this.UpdateLocation();
+            this.UpdateSprite();
+            this.UpdateShooting();
+        }
     }
     UpdateLocation() {
         const now = new Date().getTime();
@@ -676,6 +670,10 @@ export class Alian extends Rectangle {
                     this.Shoot(this);
             }
         }
+    }
+    Explode() {
+        this.enabled = false;
+        this.onExplode(this);
     }
     set x(value) {
         this._x = value;
@@ -739,13 +737,13 @@ export class TopExplosion extends Rectangle {
         this.bottom = y + h;
         this.left = x;
         this.right = x + w;
-        this.yV = 0;
         this.type = 'TopExplosion';
         this.enabled = false;
         this.sprite = sprite;
         this.frameCount = 2;
         this.framePerSec = 20;
         this.repeat = 1;
+        this.collidable = false;
     }
     Update() {
         this.UpdateSprite();
@@ -756,9 +754,9 @@ export class AlianGrid {
         this.rows = rows;
         this.cols = cols;
         this.alians = [];
-        this.Setup();
+        this.Reset();
     }
-    Setup() {
+    Reset() {
         for (let c = 0; c < this.cols; c++)
             for (let r = 0; r < this.rows; r++)
                 this.alians[c * this.rows + r] = 1;
@@ -832,6 +830,7 @@ export class AlianShoot extends Rectangle {
         this.yV = 0;
         this.enabled = false;
         this.onExplode(this);
+        this.Garbage = true;
     }
 }
 export class Explosion extends Rectangle {
@@ -845,15 +844,46 @@ export class Explosion extends Rectangle {
         this.bottom = y + h;
         this.left = x;
         this.right = x + w;
-        this.yV = 0;
         this.type = 'Explosion';
         this.enabled = true;
         this.sprite = sprite;
         this.frameCount = 2;
         this.framePerSec = 20;
         this.repeat = 1;
+        this.collidable = false;
     }
     Update() {
         this.UpdateSprite();
+    }
+}
+export class AlianExplosion extends Rectangle {
+    constructor(x, y, w, h, sprite) {
+        super();
+        this.x = x;
+        this.y = y;
+        this.width = w;
+        this.height = h;
+        this.top = y;
+        this.bottom = y + h;
+        this.left = x;
+        this.right = x + w;
+        this.type = 'AlianExplosion';
+        this.enabled = true;
+        this.sprite = sprite;
+        this.collidable = false;
+    }
+    Update() {
+        this.UpdateLocation();
+        this.UpdateSprite();
+    }
+    UpdateLocation() {
+        const now = new Date().getTime();
+        const tPassed = now - this.lastUpdate;
+        this.lastUpdate = now;
+        if (!this.paused) {
+            this.x = this.x + (this.xV * tPassed) / 1000;
+            this.left = this.x;
+            this.right = this.x + this.width;
+        }
     }
 }

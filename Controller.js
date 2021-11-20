@@ -9,7 +9,7 @@ export class Controller {
   }
 
   keyDown(event) {
-    if (event.key !== 'F5' && event.key !== 'F12')
+    if (event.key !== 'F5' && event.key !== 'F11' && event.key !== 'F12')
       event.preventDefault();
     if (this.keys.indexOf(',' + event.key + ',') < 0)
       this.keys += event.key + ',';
