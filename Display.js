@@ -47,6 +47,11 @@ export const Display = function(canvas, world) {
     this.buffer.fillRect(Math.floor(0.5 + box.x), Math.floor(0.5 + box.y), Math.floor(0.5 + box.width), Math.floor(0.5 + box.height));
   };
 
+  this.drawRectangle = function(box) {
+    this.buffer.strokeStyle = box.color;
+    this.buffer.strokeRect(Math.floor(0.5 + box.x), Math.floor(0.5 + box.y), Math.floor(0.5 + box.width), Math.floor(0.5 + box.height));
+  };
+
   this.drawText = function(text) {
     this.buffer.fillStyle = text.fillStyle;
     this.buffer.font = (text.bold ? 'bold ' : '') + text.size + 'px ' + text.font;

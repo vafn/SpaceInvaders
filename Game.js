@@ -1,4 +1,5 @@
 export class Game {
+
     constructor() {
         this.lastUpdate = new Date();
         this.movable = true;
@@ -91,38 +92,7 @@ export class World extends Game {
     }
     Update() {
         this.objects.forEach((object) => {
-            if (object.enabled) {
-                object.Update();
-                if (object.movable) {
-                    this.objects.forEach((destinationObject) => {
-                        if (
-                            destinationObject.enabled &&
-                            destinationObject.collidable
-                        ) {
-                            if (destinationObject !== object) {
-                                //check against itself?
-                                if (object.type === 'LaserShoot') {
-                                    if (destinationObject.type === 'Alian' &&object.isColid(destinationObject)) {
-                                        object.enabled = false;
-                                        //destinationObject.enabled = false;
-                                        destinationObject.Explode();
-                                        this.dispatcher.dispatchEvent(
-                                            new CustomEvent('AnAlianKilled', { detail: {alianIndex: destinationObject.index}})
-                                        );
-                                    } else if (
-                                        destinationObject.type === 'Barrier' &&
-                                        object.isColid(destinationObject)
-                                    ) {
-                                        this.Beep();
-                                    }
-                                } else if (object.type === 'Player') {
-                                }
-                            }
-                        }
-                    });
-                    this.IsWentOutOfWorld(object);
-                }
-            }
+                object.Update(this.objects);
         });
     }
     IsWentOutOfWorld(object) {
@@ -139,14 +109,6 @@ class GameObject extends Game {
         super();
         delete this.world;
         this.type = 'GameObject';
-    }
-    Update() {
-        //this.x = this.x + this.xV;
-        //this.y = this.y + this.yV;
-        //this.top = this.y;
-        //this.bottom = ball.y;
-        //this.left = ball.x;
-        //this.right = this.x;
     }
     Set(config) {
         if (typeof config.x != 'undefined') this.x = config.x;
@@ -338,7 +300,6 @@ export class Wall extends Rectangle {
         this.collidable = collidable;
         this.movable = false;
     }
-    Update() {}
 }
 export class Player extends Rectangle {
     constructor(x, y, w, h, xV, yV, color, colidFrom) {
@@ -369,7 +330,7 @@ export class Player extends Rectangle {
     }
     Update() {
         if (typeof this.ai !== 'undefined') this.UpdateAction();
-        this.UpdateLocation();
+            this.UpdateLocation();
     }
     UpdateLocation() {
         let now = new Date().getTime();
@@ -508,7 +469,8 @@ export class Shooter extends Rectangle {
         this.sprite = sprite;
     }
     Update() {
-        this.UpdateLocation();
+        if (this.enabled)
+            this.UpdateLocation();
     }
     UpdateLocation() {
         let now = new Date().getTime();
@@ -595,7 +557,8 @@ export class Alian extends Rectangle {
         this.grid;
         this.shootIntervalMin = 4000;
         this.shootIntervalMax = 8000;
-        this.shootInterval = 8000;
+        ////////////////////////////////this.shootInterval = 8000;
+        this.shootInterval = 98000;
         this.lastTry2Shoot = new Date().getTime() - Math.floor(Math.random() * this.shootInterval);
         this.Shoot;
         this.onExplode = () => {};
@@ -620,7 +583,7 @@ export class Alian extends Rectangle {
         }
         this.top = this.y;
         this.left = this._x;
-        this.righ = this._x + this.width;
+        this.right = this._x + this.width;
         this.bottom = this.y + this.height;
 
         this.SetupEvents();
@@ -702,8 +665,11 @@ export class LaserShoot extends Rectangle {
         this.wentOut;
         this.enabled = false;
     }
-    Update() {
-        this.UpdateLocation();
+    Update(objects) {
+        if (this.enabled) {
+            this.UpdateLocation();
+            this.Check4Collision(objects);
+        }
     }
     UpdateLocation() {
         if (this.enabled) {
@@ -717,13 +683,52 @@ export class LaserShoot extends Rectangle {
             }
         }
     }
+    Check4Collision(objects){
+        objects.forEach((destObj) => {
+            if (destObj.enabled && destObj.collidable && destObj !== this) {
+                if (this.isColid(destObj)) {
+                    if (destObj.type === 'Alian') {
+                        this.enabled = false;
+                        destObj.Explode();
+                        destObj.dispatcher.dispatchEvent(
+                            new CustomEvent('AnAlianKilled', { detail: {alianIndex: destObj.index}})
+                        );
+                    } else {
+                        if (destObj.type === 'ShieldBlock')
+                            for (let d=0; d < destObj.objects.length; d++)
+                                destObj.objects[d].collidable = true;
+
+                        if (destObj.type === 'ShieldDot') {
+                            this.enabled = false;
+                            this.yV = 0;
+                            destObj.parent.CollisionAt(destObj.row, destObj.col);
+                        }
+                    }
+                }
+            }
+        });
+
+    }
     isColid(obj2Check) {
+        /*
         return (
             this.x < obj2Check.x + obj2Check.width &&
             this.x + this.width > obj2Check.x &&
             this.y < obj2Check.y + obj2Check.height &&
             this.y + this.height > obj2Check.y
         );
+
+        */
+        if (this.x >= obj2Check.x + obj2Check.width)
+            return false;
+        if (this.x + this.width <= obj2Check.x)
+            return false;
+        if (this.y >= obj2Check.y + obj2Check.height)
+            return false;
+        if (this.y + this.height <= obj2Check.y)
+            return false;
+        
+        return true;
     }
 }
 export class TopExplosion extends Rectangle {
@@ -804,7 +809,8 @@ export class AlianShoot extends Rectangle {
         this.onExplode = () => {};
     }
     Update() {
-        this.UpdateLocation();
+        if (this.enabled)
+            this.UpdateLocation();
     }
     UpdateLocation() {
         if (this.enabled) {
@@ -885,5 +891,116 @@ export class AlianExplosion extends Rectangle {
             this.left = this.x;
             this.right = this.x + this.width;
         }
+    }
+}
+
+export class Shield extends Rectangle {
+    constructor(x, y) {
+        super();
+        this.x = x;
+        this.y = y;
+        this.width = 60;
+        this.height = 48;
+        this.top = 0;
+        this.bottom = 48;
+        this.left = 0;
+        this.right = 60;
+        this.type = 'Shield';
+        this.movable = false;
+        this.color = 'Aqua';
+ 
+        this.top = this.y;
+        this.left = this.x;
+        this.right = this.x + this.width;
+        this.bottom = this.y + this.height;
+    }
+    CollisionAt(blockRow, blockCol, dotRow, dotCol) {
+        this.objects.forEach((shieldBlck, index) => {
+            shieldBlck.collidable = false;
+            shieldBlck.objects.forEach((dot, index) => {
+                dot.collidable = false;
+            });
+        });
+
+        let row = blockRow * 4 + dotRow;
+        let col = blockCol * 4 + dotCol;
+
+        for (let r = row - 1; r <= row + 1; r++)
+            for (let c = col - 1; c <= col + 1; c++)
+                this.TurnoffDotAt(r, c);
+
+        for (let r = row - 2; r <= row + 2; r++)
+            for (let c = col - 2; c <= col + 2; c++)
+                if (r < row - 1 || r > row + 1 || c < col - 1 || c > col + 1)
+                    if (Math.random() > 0.5)
+                        this.TurnoffDotAt(r, c);
+    
+        for (let r = row - 3; r <= row + 3; r++)
+            for (let c = col - 3; c <= col + 3; c++)
+                if (r < row - 2 || r > row + 2 || c < col - 2 || c > col + 2)
+                    if (Math.random() > 0.5)
+                        this.TurnoffDotAt(r, c);
+    }
+    TurnoffDotAt(r, c) {
+        if (r >= 0 && r < 16 && c >= 0 && c < 20) {
+            let blockIndex = 5 * parseInt(r / 4) + parseInt(c / 4);
+            let shieldBlock = this.objects[blockIndex];
+            let ii = (r % 4) * 4 + (c % 4)
+            shieldBlock.objects[ii].enabled = false;
+        }
+    }
+}
+
+export class ShieldBlock extends Rectangle {
+    constructor(x, y, parent, row, col) {
+        super();
+        this.x = x;
+        this.y = y;
+        this.width = 12;
+        this.height = 12;
+        this.top = 0;
+        this.bottom = 24;
+        this.left = 0;
+        this.right = 24;
+        this.type = 'ShieldBlock';
+        this.movable = false;
+        this.parent = parent;
+        this.row = row;
+        this.col = col;
+ 
+        this.top = this.y;
+        this.left = this.x;
+        this.right = this.x + this.width;
+        this.bottom = this.y + this.height;
+    }
+    CollisionAt(row, col) {
+        this.parent.CollisionAt(this.row, this.col, row, col);
+    };
+}
+export class ShieldDot extends Rectangle {
+    constructor(x, y, color, parent, row, col) {
+        super();
+        this.x = x;
+        this.y = y;
+        this.width = 3;
+        this.height = 3;
+        this.top = 0;
+        this.bottom = 3;
+        this.left = 0;
+        this.right = 3;
+        this.type = 'ShieldDot';
+        this.movable = false;
+        this.color = color;
+        this.parent = parent;
+        this.row = row;
+        this.col = col;
+     
+        this.collidable = false;
+        this.animate = false;
+ 
+        this.top = this.y;
+        this.left = this.x;
+        this.right = this.x + this.width;
+        this.bottom = this.y + this.height;
     }
 }

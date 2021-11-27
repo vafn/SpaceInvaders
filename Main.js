@@ -1,5 +1,4 @@
-import { PlayerAI } from './AI.js';
-import { Game, World, Wall, Player, Ball, Text, Shooter, Alian, LaserShoot, TopExplosion, AlianGrid, AlianShoot,Explosion, AlianExplosion } from './Game.js';
+import { Game, World, Wall, Player, Ball, Text, Shooter, Alian, LaserShoot, TopExplosion, AlianGrid, AlianShoot,Explosion, AlianExplosion, Shield, ShieldBlock, ShieldDot } from './Game.js';
 import { Display } from './Display.js';
 import { Controller } from './Controller.js';
 
@@ -36,8 +35,8 @@ const sprites = {
 const worlConfig = {
 	world: { width: 669, height: 727 },
 	shooter: { width: 39, height: 24, color: 'red' },
-	laserShoot: { width: 1, height: 25, color: 'white' },
-	alianShoot: { width: 3, height: 25, color: 'yellow' }
+	laserShoot: { width: 3, height: 24, color: 'white' },
+	alianShoot: { width: 3, height: 24, color: 'yellow' }
 };
 let liveAlians = 0;
 let alianGrid = new AlianGrid(5, 11);
@@ -130,6 +129,42 @@ function CreateWorld(c) {
 			topExplosion.enabled = false;
 		}, 100);
 	};
+
+	let colors = ['red', 'black', 'blue', '#FFFF00', '#00FFFF', '#FF00FF', '#FF8000', '#FF0080', '#80FF00', '#00FF80', '#FFFFFF'];
+
+	let shields = [];
+	let shieldX = 114;
+	let shieldY = 550;
+
+	for (let shieldNo = 0; shieldNo <= 3; shieldNo++) {
+
+		shields[shieldNo] = new Shield(shieldX, shieldY);
+
+		let index = 0;
+		for (let r = 0; r <= 3; r++) {
+			for (let c = 0; c <= 4; c++) {
+				const shieldBlockX = shieldX + c * 12;
+				const shieldBlockY = shieldY + r * 12;
+				const shieldBlock = new ShieldBlock(shieldBlockX, shieldBlockY, shields[shieldNo], r, c);
+				shields[shieldNo].objects[index++] = shieldBlock;
+				world.objects.push(shieldBlock);
+
+				let color = colors[Math.floor(Math.random() * 12)];
+				color = 'white'
+				let dotIndex = 0;
+				for (let r = 0; r < 4; r++) {
+					for (let c = 0; c < 4; c++) {
+						const dotX = shieldBlockX + c * 3;
+						const dotY = shieldBlockY + r * 3;
+						const dot = new ShieldDot(dotX, dotY, color, shieldBlock, r , c);
+						shieldBlock.objects[dotIndex++] = dot;
+						world.objects.push(dot);
+					}
+				}
+			}
+		}
+		shieldX += 60 +  67;
+	}
 
 	world.objects.push(wallBottom);
 	world.objects.push(shooter);
@@ -242,7 +277,15 @@ function ShootLaser() {
 		laserShoot.enabled = true;
 		laserShoot.x = shooter.left + shooter.width / 2 - laserShoot.width / 2;
 		laserShoot.y = shooter.y - laserShoot.height;
-		laserShoot.yV = -1200;
+		laserShoot.yV = -1000;
+
+		world.objects.forEach(gObj => {
+			if (gObj instanceof ShieldBlock)
+				gObj.collidable = true;
+			if (gObj instanceof ShieldDot)
+				gObj.collidable = false;
+		});
+
 	}
 }
 
@@ -280,7 +323,6 @@ function Render() {
 	}
 
 	game.Update();
-
 
 	if (!gamePaused) {
 
@@ -378,6 +420,10 @@ function Render() {
 				display.drawSprite(gObj);
 			else if (gObj instanceof AlianExplosion)
 				display.drawSprite(gObj);
+			if (gObj instanceof ShieldDot)
+				display.drawBox(gObj);
+			if (gObj instanceof Shield)
+				display.drawRectangle(gObj);
 		}
 	});
 
