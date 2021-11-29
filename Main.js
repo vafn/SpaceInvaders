@@ -45,6 +45,7 @@ let alianGrid = new AlianGrid(5, 11);
 let lives = 3;
 let points = 0;
 let shooters = [];
+let livesCountText = null;
 
 images.onload = () => {
 	///
@@ -89,6 +90,7 @@ function CreateWorld(c) {
 	topExplosion = new TopExplosion(0, 83, 22, 26, sprites.topExplosion);
 	shooterExplosion = new ShooterExplosion(world.left + (world.width - c.shooter.width) / 2, 629, 48, 24, sprites.shooterExplosion);
 	p1Score = new Text(world.left + world.width * 1 / 4, 0, '0', 'white', true, 24, 'Arial', true);
+	livesCountText = new Text(25, world.height - 30, lives, '#00B098', true, 32, 'Arial', true);
 
 	shooter.Explode =  (shooter) => {
         shooter.enabled = false;
@@ -105,6 +107,7 @@ function CreateWorld(c) {
 			controller.ClearBuffer();
 
 			lives--;
+			UpdateLivesCountText();
 			if (lives > 0)
 				shooters.forEach((shooter, index) => shooter.enabled = index < lives - 1 );
 			else
@@ -113,9 +116,8 @@ function CreateWorld(c) {
 		};
 		shooterExplosion.enabled = true;
 	}
-
 	for (let sIndex = 0; sIndex < lives - 1; sIndex++) {
-		shooters[sIndex] = new Shooter(world.left + sIndex * (c.shooter.width + 5), world.bottom - c.shooter.height - 2, c.shooter.width, c.shooter.height, sprites.shooter);
+		shooters[sIndex] = new Shooter(60  + sIndex * (c.shooter.width + 5), world.bottom - c.shooter.height - 2, c.shooter.width, c.shooter.height, sprites.shooter);
 		world.objects.push(shooters[sIndex]);
 	}
 	
@@ -216,6 +218,7 @@ function CreateWorld(c) {
 	world.objects.push(topExplosion);
 	world.objects.push(shooterExplosion);
 	world.objects.push(p1Score);
+	world.objects.push(livesCountText);
 	game.objects.push(world);
 }
 function CreateAlians(config) {
@@ -503,10 +506,14 @@ function PlayGame(pa) {
 }
 function IncreaseLive() {
 	lives++;
+	UpdateLivesCountText();
 	if (shooters.length < lives - 1) {
 		const sIndex = shooters.length;
-		shooters[sIndex] = new Shooter(world.left + sIndex * (worlConfig.shooter.width + 5), world.bottom - worlConfig.shooter.height - 2, worlConfig.shooter.width, worlConfig.shooter.height, sprites.shooter);
+		shooters[sIndex] = new Shooter(60 + sIndex * (worlConfig.shooter.width + 5), world.bottom - worlConfig.shooter.height - 2, worlConfig.shooter.width, worlConfig.shooter.height, sprites.shooter);
 		world.objects.push(shooters[sIndex]);
 	}
 	shooters.forEach((shooter, index) => shooter.enabled = index < lives - 1 );
+}
+function UpdateLivesCountText()  {
+	livesCountText.text = lives.toString();
 }
