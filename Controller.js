@@ -18,9 +18,12 @@ export class Controller {
     this.keys = this.keys.replaceAll(event.key + ',', '');
   }
   blur(event) {
-    this.keys = ','
+    this.keys = ',';
   }
   isPressed(key) {
     return this.keys.indexOf(',' + key + ',') >= 0;
+  }
+  ClearBuffer() {
+    this.keys = ',';
   }
 }
