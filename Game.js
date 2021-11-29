@@ -54,24 +54,6 @@ export class Game {
         );
         //snd.play();
     }
-
-    static lineLine(line1, line2) {
-        let x1 = line1[0];
-        let y1 = line1[1];
-        let x2 = line1[2];
-        let y2 = line1[3];
-        let x3 = line2[0];
-        let y3 = line2[1];
-        let x4 = line2[2];
-        let y4 = line2[3];
-        let uA =
-            ((x4 - x3) * (y1 - y3) - (y4 - y3) * (x1 - x3)) /
-            ((y4 - y3) * (x2 - x1) - (x4 - x3) * (y2 - y1));
-        let uB =
-            ((x2 - x1) * (y1 - y3) - (y2 - y1) * (x1 - x3)) /
-            ((y4 - y3) * (x2 - x1) - (x4 - x3) * (y2 - y1));
-        return uA >= 0 && uA <= 1 && uB >= 0 && uB <= 1;
-    }
 }
 export class World extends Game {
     constructor(x, y, w, h) {
@@ -126,162 +108,10 @@ class GameObject extends Game {
         return false;
     }
 }
-class Point extends GameObject {
-    constructor(x, y, xV, yV, wentOut) {
-        super();
-        this.xV = xV;
-        this.yV = yV;
-        this.type = 'Point';
-        this.x = x;
-        this.y = y;
-        this.top = y;
-        this.bottom = y;
-        this.left = x;
-        this.right = x;
-    }
-}
-class Line extends GameObject {
-    constructor(x1, y1, x2, y2, xV, yV, wentOut) {
-        super();
-        this.xV = xV;
-        this.yV = yV;
-        this.type = 'Line';
-        this.x = x1;
-        this.y = y1;
-        this.top = this.y1;
-        this.bottom = this.y2;
-        this.left = this.x1;
-        this.right = this.x2;
-    }
-}
 class Rectangle extends GameObject {
     constructor(x, y, w, h, color, collidable) {
         super();
         this.collidableSides = [true, true, true, true];
-    }
-}
-export class Ball extends GameObject {
-    constructor(x, y, r, xV, yV, color) {
-        super();
-        this.visible = true;
-        this.radius = r;
-        this.xV = xV;
-        this.yV = yV;
-        this.xVDefault = xV;
-        //this.yVDefault = yV;
-        this.color = color;
-        this.type = 'Ball';
-        this.x = x;
-        this.y = y;
-        this.width = 2 * r;
-        this.height = 2 * r;
-        this.top = y - r;
-        this.bottom = y + r;
-        this.left = x - r;
-        this.right = x + r;
-        this.prevX = this.x;
-        this.prevY = this.y;
-        this.lastUpdate = new Date();
-    }
-    Update() {
-        this.prevX = this.x;
-        this.prevY = this.y;
-        let now = new Date().getTime();
-        let tPassed = now - this.lastUpdate;
-        this.lastUpdate = now;
-        this.x = this.x + (this.xV * tPassed) / 1000;
-        this.y = this.y + (this.yV * tPassed) / 1000;
-        this.top = this.y - this.radius;
-        this.bottom = this.y + this.radius;
-        this.left = this.x - this.radius;
-        this.right = this.x + this.radius;
-    }
-
-    isColid(obj2Check) {
-        /*
-        console.log(obj2Check.collidableSides);
-
-        let boxLines = [];
-        boxLines[0] = [obj2Check.left, obj2Check.top, obj2Check.right, obj2Check.top];
-        boxLines[1] = [obj2Check.right, obj2Check.top, obj2Check.right, obj2Check.bottom];
-        boxLines[2] = [obj2Check.left, obj2Check.bottom, obj2Check.right, obj2Check.bottom];
-        boxLines[3] = [obj2Check.left, obj2Check.top, obj2Check.left, obj2Check.bottom];
-
-        for(let side = 0; side < 4; side++) {
-          if(obj2Check.collidableSides[side])
-            if(Game.circleLine(boxLines[side]))
-              return side + 1;
-        }
-        */
-
-        let deltaX =
-            this.x - Math.max(obj2Check.x, Math.min(this.x, obj2Check.right));
-        let deltaY =
-            this.y - Math.max(obj2Check.y, Math.min(this.y, obj2Check.bottom));
-        if (deltaX * deltaX + deltaY * deltaY < this.radius * this.radius)
-            return true;
-        else {
-            //Check Tunneling
-            let boxLines = [];
-            boxLines[0] = [
-                obj2Check.left,
-                obj2Check.top,
-                obj2Check.right,
-                obj2Check.top,
-            ];
-            boxLines[1] = [
-                obj2Check.right,
-                obj2Check.top,
-                obj2Check.right,
-                obj2Check.bottom,
-            ];
-            boxLines[2] = [
-                obj2Check.left,
-                obj2Check.bottom,
-                obj2Check.right,
-                obj2Check.bottom,
-            ];
-            boxLines[3] = [
-                obj2Check.left,
-                obj2Check.top,
-                obj2Check.left,
-                obj2Check.bottom,
-            ];
-            let b = Math.abs(this.x - this.prevX);
-            let a = Math.abs(this.y - this.prevY);
-            let A = this.radius / Math.sqrt(1 + ((b / a) * b) / a);
-            let B = (A * b) / a;
-            let circlePathLines = [];
-            circlePathLines[0] = [
-                this.prevX - B,
-                this.prevY - A,
-                this.x - B,
-                this.y - A,
-            ];
-            circlePathLines[1] = [
-                this.x + B,
-                this.y + A,
-                this.x + B,
-                this.y + A,
-            ];
-            circlePathLines[2] = [
-                this.x - B,
-                this.y - A,
-                this.prevX + B,
-                this.prevY + A,
-            ];
-            circlePathLines[3] = [
-                this.prevX - B,
-                this.prevY - A,
-                this.prevX + B,
-                this.prevY + A,
-            ];
-            for (let pl = 0; pl <= 3; pl++)
-                for (let cpl = 0; cpl <= 3; cpl++)
-                    if (Game.lineLine(boxLines[pl], circlePathLines[cpl]))
-                        return true;
-        }
-        return false;
     }
 }
 export class Wall extends Rectangle {
@@ -301,133 +131,6 @@ export class Wall extends Rectangle {
         this.movable = false;
     }
 }
-export class Player extends Rectangle {
-    constructor(x, y, w, h, xV, yV, color, colidFrom) {
-        super();
-        this.x = x;
-        this.y = y;
-        this.width = w;
-        this.height = h;
-        this.top = y;
-        this.bottom = y + h;
-        this.left = x;
-        this.right = x + w;
-        this.xV = xV;
-        this.yV = yV;
-        this.maxV = 800;
-        this.acc = 300;
-        this.friction = 150;
-        this.color = color;
-        this.score = 0;
-        this.conceded = false;
-        this.type = 'Player';
-        this.wentOut;
-        this.kickBall;
-        this.ai;
-        this.actions = [];
-        this.action = null;
-        this.colidFrom = colidFrom;
-    }
-    Update() {
-        if (typeof this.ai !== 'undefined') this.UpdateAction();
-            this.UpdateLocation();
-    }
-    UpdateLocation() {
-        let now = new Date().getTime();
-        let tPassed = now - this.lastUpdate;
-        this.lastUpdate = now;
-        this.x = this.x + (this.xV * tPassed) / 1000;
-        this.y = this.y + (this.yV * tPassed) / 1000;
-        this.top = this.y;
-        this.bottom = this.y + this.height;
-        this.left = this.x;
-        this.right = this.x + this.width;
-
-        if (this.yV > 0) {
-            if (this.yV > this.friction) this.yV -= this.friction;
-            else this.yV = 0;
-        } else if (this.yV < 0) {
-            if (this.yV < -this.friction) this.yV += this.friction;
-            else this.yV = 0;
-        }
-    }
-    UpdateAction() {
-        if (this.actions.length === 0) this.actions = this.ai.GetActions();
-        if (this.action === null) {
-            this.action = this.actions.shift();
-            this.action.lastUpdate = new Date().getTime();
-            if (typeof this.action.oneTime === 'undefined')
-                this.action.oneTime = false;
-        }
-        let now = new Date().getTime();
-        let tPassed = now - this.action.lastUpdate;
-        this.action.lastUpdate = now;
-        if (!this.action.oneTime) this.action.duration -= tPassed;
-        if (this.action.oneTime || this.action.duration > 0) {
-            switch (this.action.do) {
-                case 'nothing':
-                    break;
-                case 'moveUp':
-                    this.moveUp();
-                    break;
-                case 'moveDown':
-                    this.moveDown();
-                    break;
-                case 'kickBall':
-                    this.action.duration = 0;
-                    this.kickBall();
-                    break;
-            }
-            if (this.action.oneTime) this.action = null;
-        } else this.action = null;
-    }
-    moveUp() {
-        if (this.yV > -this.maxV) this.yV -= this.acc;
-        else this.yV = -this.maxV;
-    }
-    moveDown() {
-        if (this.yV < this.maxV) this.yV += this.acc;
-        else this.yV = this.maxV;
-    }
-
-    isColid(obj2Check) {
-        if (obj2Check.type === 'Wall') {
-            if (obj2Check.collidable) {
-                let topBottom =
-                    (this.top < obj2Check.bottom && this.top > obj2Check.top) ||
-                    (this.bottom > obj2Check.top &&
-                        this.bottom < obj2Check.bottom);
-                topBottom =
-                    topBottom ||
-                    (this.top < obj2Check.top &&
-                        this.bottom > obj2Check.bottom);
-                let leftRight =
-                    (this.left < obj2Check.right &&
-                        this.left > obj2Check.left) ||
-                    (this.right > obj2Check.left &&
-                        this.right < obj2Check.right);
-                return topBottom && leftRight;
-            }
-        }
-        return false;
-    }
-    zzzzplay() {
-        let move = this.ai.GetMove();
-        if (move === 'up') this.moveUp();
-        else if (move === 'down') this.moveDown();
-        return move;
-    }
-    concededAPoint() {
-        this.conceded = true;
-        this.hasBall = true;
-        if (typeof this.ai !== 'undefined') {
-            this.actions = [];
-            this.action = null;
-            this.actions = this.ai.GetActions();
-            this.conceded = false;
-        }
-    }
-}
 export class Text extends GameObject {
     constructor(x, y, text, fillStyle, bold, size, font, centerAligned) {
         super();
@@ -444,7 +147,7 @@ export class Text extends GameObject {
     }
 }
 export class Shooter extends Rectangle {
-    constructor(x, y, w, h, xV, yV, color, colidFrom, sprite) {
+    constructor(x, y, w, h, sprite) {
         super();
         this.x = x;
         this.y = y;
@@ -454,18 +157,15 @@ export class Shooter extends Rectangle {
         this.bottom = y + h;
         this.left = x;
         this.right = x + w;
-        this.xV = xV;
-        this.yV = yV;
+        this.xV = 0;
+        this.yV = 0;
         this.defaultXSpeed = 300;
         this.friction = 10000;
-        this.color = color;
         this.score = 0;
         this.conceded = false;
         this.type = 'Shooter';
         this.wentOut;
         this.shoot;
-        this.ai;
-        this.colidFrom = colidFrom;
         this.sprite = sprite;
     }
     Update() {
@@ -519,16 +219,6 @@ export class Shooter extends Rectangle {
         }
         return false;
     }
-    concededAPoint() {
-        this.conceded = true;
-        this.hasBall = true;
-        if (typeof this.ai !== 'undefined') {
-            this.actions = [];
-            this.action = null;
-            this.actions = this.ai.GetActions();
-            this.conceded = false;
-        }
-    }
 }
 export class Alian extends Rectangle {
     constructor(config) {
@@ -543,23 +233,16 @@ export class Alian extends Rectangle {
         this.right = 40;
         this.xV = 0;
         this.yV = 0;
-        this.color = '';
         this.conceded = false;
         this.type = 'Alian';
         this.race = 'Squid';
         this.wentOut;
         this.shoot;
-        this.ai;
-        this.colidFrom = '';
         this.race = '';
         this.dispatcher = null;
         this.index = -1;
         this.grid;
-        this.shootIntervalMin = 4000;
-        this.shootIntervalMax = 8000;
-        ////////////////////////////////this.shootInterval = 8000;
-        this.shootInterval = 98000;
-        this.lastTry2Shoot = new Date().getTime() - Math.floor(Math.random() * this.shootInterval);
+        this.point = 0;
         this.Shoot;
         this.onExplode = () => {};
 
@@ -567,7 +250,6 @@ export class Alian extends Rectangle {
             if (typeof config.type !== 'undefined') this.type = config.type;
             if (typeof config.race !== 'undefined') this.race = config.race;
             if (typeof config.dispatcher !== 'undefined') this.dispatcher = config.dispatcher;
-            if (typeof config.color !== 'undefined') this.color = config.color;
             if (typeof config.x !== 'undefined') this._x = config.x;
             if (typeof config.y !== 'undefined') this.y = config.y;
             if (typeof config.xV !== 'undefined') this.xV = config.xV;
@@ -580,29 +262,17 @@ export class Alian extends Rectangle {
             if (typeof config.index !== 'undefined') this.index = config.index;
             if (typeof config.grid !== 'undefined') this.grid = config.grid;
             if (typeof config.Shoot !== 'undefined') this.Shoot = config.Shoot;
+            if (typeof config.point !== 'undefined') this.point = config.point;
         }
         this.top = this.y;
         this.left = this._x;
         this.right = this._x + this.width;
         this.bottom = this.y + this.height;
-
-        this.SetupEvents();
-    }
-    ChangeDir(dir) {
-        this.direction = dir;
-        console.log(this.name + ': I changed my direction to:' + dir);
-    }
-    SetupEvents() {
-        this.dispatcher.addEventListener('AnAlianHitTheWall', (event) => {
-            if (event.detail.wall === 'left') this.ChangeDir(dir.right);
-            else if (event.detail.wall === 'right') this.ChangeDir(dir.left);
-        });
     }
     Update() {
         if (this.enabled) {
             this.UpdateLocation();
             this.UpdateSprite();
-            this.UpdateShooting();
         }
     }
     UpdateLocation() {
@@ -616,22 +286,6 @@ export class Alian extends Rectangle {
             this.bottom = this.y + this.height;
             this.left = this._x;
             this.right = this._x + this.width;
-        }
-    }
-    UpdateShooting() {
-        const now = new Date().getTime();
-        const tPassed = now - this.lastTry2Shoot;
-        if (this.paused) {
-            this.lastTry2Shoot = new Date().getTime() - Math.floor(Math.random() * this.shootInterval);
-            //this.lastTry2Shoot = now;
-        }
-        else {
-            if (tPassed > this.shootInterval) {
-                this.shootInterval = this.shootIntervalMin + Math.floor(Math.random() * (this.shootIntervalMax - this.shootIntervalMin));
-                this.lastTry2Shoot = now;
-                if (this.grid && this.grid.CanFire(this))
-                    this.Shoot(this);
-            }
         }
     }
     Explode() {
@@ -691,7 +345,10 @@ export class LaserShoot extends Rectangle {
                         this.enabled = false;
                         destObj.Explode();
                         destObj.dispatcher.dispatchEvent(
-                            new CustomEvent('AnAlianKilled', { detail: {alianIndex: destObj.index}})
+                            new CustomEvent('AnAlianKilled', { detail: {
+                                alianIndex: destObj.index,
+                                point: destObj.point
+                            }})
                         );
                     } else {
                         if (destObj.type === 'ShieldBlock')
@@ -707,27 +364,10 @@ export class LaserShoot extends Rectangle {
                 }
             }
         });
-
     }
     isColid(obj2Check) {
-        /*
-        return (
-            this.x < obj2Check.x + obj2Check.width &&
-            this.x + this.width > obj2Check.x &&
-            this.y < obj2Check.y + obj2Check.height &&
-            this.y + this.height > obj2Check.y
-        );
-
-        */
-        if (this.x >= obj2Check.x + obj2Check.width)
+        if (this.x >= obj2Check.x + obj2Check.width || this.x + this.width <= obj2Check.x || this.y >= obj2Check.y + obj2Check.height || this.y + this.height <= obj2Check.y)
             return false;
-        if (this.x + this.width <= obj2Check.x)
-            return false;
-        if (this.y >= obj2Check.y + obj2Check.height)
-            return false;
-        if (this.y + this.height <= obj2Check.y)
-            return false;
-        
         return true;
     }
 }
@@ -754,19 +394,27 @@ export class TopExplosion extends Rectangle {
         this.UpdateSprite();
     }
 }
-export class AlianGrid {
-    constructor(rows, cols) {
+export class AlianGrid extends Rectangle {
+        constructor(rows, cols) {
+        super();
+        this.movable = false;
+        this.collidable = false;
+        this.type = 'AlianGrid';
+        this.lastTry2Shoot = new Date().getTime();
+        this.shootInterval = 1000;
+        
         this.rows = rows;
         this.cols = cols;
         this.alians = [];
         this.Reset();
     }
     Reset() {
+        this.shootInterval = 1000;
+        this.lastTry2Shoot = new Date().getTime();
         for (let c = 0; c < this.cols; c++)
             for (let r = 0; r < this.rows; r++)
                 this.alians[c * this.rows + r] = 1;
     }
-
     CanFire(alian) {
         let result = true;
         if (alian.enabled) {
@@ -788,6 +436,28 @@ export class AlianGrid {
     SetAlianKilled(alianIndex) {
         this.alians[alianIndex] = 0;
     }
+    Update() {
+        if (this.enabled) {
+            const now = new Date().getTime();
+            const tPassed = now - this.lastTry2Shoot;
+            if (this.paused)
+                this.lastTry2Shoot = now;
+            else {
+                if (tPassed > this.shootInterval) {
+                    this.lastTry2Shoot = now;
+                    const canFireList = [];
+                    this.objects.forEach((alian, index) => {
+                        if (this.CanFire(alian))
+                            canFireList.push(index);
+                    });
+                    if (canFireList.length > 0) {
+                        const selectedAlianIndex2Fire = canFireList[Math.floor(canFireList.length * Math.random())];
+                        this.objects[selectedAlianIndex2Fire].Shoot(this.objects[selectedAlianIndex2Fire]);
+                    }
+                }
+            }
+        }
+    }
 }
 export class AlianShoot extends Rectangle {
     constructor(x, y, w, h, color) {
@@ -808,9 +478,11 @@ export class AlianShoot extends Rectangle {
         this.enabled = true;
         this.onExplode = () => {};
     }
-    Update() {
-        if (this.enabled)
+    Update(objects) {
+        if (this.enabled) {
             this.UpdateLocation();
+            this.Check4Collision(objects);
+        }
     }
     UpdateLocation() {
         if (this.enabled) {
@@ -823,14 +495,34 @@ export class AlianShoot extends Rectangle {
                 this.bottom = this.y + this.height;
             }
         }
+    }//00B098
+    Check4Collision(objects){
+        objects.forEach((destObj) => {
+            if (destObj.enabled && destObj.collidable && destObj !== this) {
+                if (this.isColid(destObj)) {
+                    if (destObj.type === 'Shooter') {
+                        this.enabled = false;
+						this.Garbage = true;
+                        destObj.Explode(destObj);
+                    } else {
+                        if (destObj.type === 'ShieldBlock')
+                            for (let d = 0; d < destObj.objects.length; d++)
+                                destObj.objects[d].collidable = true;
+
+                        if (destObj.type === 'ShieldDot') {
+                            this.enabled = false;
+                            this.yV = 0;
+                            destObj.parent.CollisionAt(destObj.row, destObj.col);
+                        }
+                    }
+                }
+            }
+        });
     }
     isColid(obj2Check) {
-        return (
-            this.x < obj2Check.x + obj2Check.width &&
-            this.x + this.width > obj2Check.x &&
-            this.y < obj2Check.y + obj2Check.height &&
-            this.y + this.height > obj2Check.y
-        );
+        if (this.x >= obj2Check.x + obj2Check.width || this.x + this.width <= obj2Check.x || this.y >= obj2Check.y + obj2Check.height || this.y + this.height <= obj2Check.y)
+            return false;
+        return true;
     }
     Explode() {
         this.yV = 0;
@@ -907,7 +599,6 @@ export class Shield extends Rectangle {
         this.right = 60;
         this.type = 'Shield';
         this.movable = false;
-        this.color = 'Aqua';
  
         this.top = this.y;
         this.left = this.x;
@@ -938,8 +629,15 @@ export class Shield extends Rectangle {
         for (let r = row - 3; r <= row + 3; r++)
             for (let c = col - 3; c <= col + 3; c++)
                 if (r < row - 2 || r > row + 2 || c < col - 2 || c > col + 2)
-                    if (Math.random() > 0.5)
+                    if (Math.random() > 0.8)
                         this.TurnoffDotAt(r, c);
+
+        this.objects.forEach(shieldBlock => {
+            shieldBlock.collidable = true;
+            shieldBlock.objects.forEach(shieldDot => {
+                shieldDot.collidable = false;
+            });        
+        });
     }
     TurnoffDotAt(r, c) {
         if (r >= 0 && r < 16 && c >= 0 && c < 20) {
@@ -1002,5 +700,29 @@ export class ShieldDot extends Rectangle {
         this.left = this.x;
         this.right = this.x + this.width;
         this.bottom = this.y + this.height;
+    }
+}
+export class ShooterExplosion extends Rectangle {
+    constructor(x, y, w, h, sprite) {
+        super();
+        this.x = x;
+        this.y = y;
+        this.width = w;
+        this.height = h;
+        this.top = y;
+        this.bottom = y + h;
+        this.left = x;
+        this.right = x + w;
+        this.type = 'ShooterExplosion';
+        this.enabled = false;
+        this.animate = false;
+        this.sprite = sprite;
+        this.frameCount = 2;
+        this.framePerSec = 20;
+        this.repeat = 5;
+        this.collidable = false;
+    }
+    Update() {
+        this.UpdateSprite();
     }
 }

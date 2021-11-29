@@ -1,4 +1,4 @@
-import { Game, World, Wall, Player, Ball, Text, Shooter, Alian, LaserShoot, TopExplosion, AlianGrid, AlianShoot,Explosion, AlianExplosion, Shield, ShieldBlock, ShieldDot } from './Game.js';
+import { Game, World, Wall, Text, Shooter, Alian, LaserShoot, TopExplosion, AlianGrid, AlianShoot,Explosion, AlianExplosion, Shield, ShieldBlock, ShieldDot, ShooterExplosion } from './Game.js';
 import { Display } from './Display.js';
 import { Controller } from './Controller.js';
 
@@ -11,17 +11,18 @@ let wallBottom = null;
 let shooter = null;
 let laserShoot = null;
 let topExplosion = null;
+let shooterExplosion = null;
 let p1Score = null;
-let p2Score = null;
 let gamePaused = false;
 const alians = [];
 const evtDispatcher = new EventTarget();
 let docWidth = 0;
 let docHeight = 0;
-let waveNo = 0;
+let waveNo = 1;
 const firstWaveY = 164;
-const waveStartX = 62;
-const waveAdvance = 25;
+const waveStartX = 92;
+const waveAdvance = 72;
+const alianDefalutXV = 10;
 var images = new Image();
 const sprites = {
 	squid: { x: 22, y: 1, sWidth: 8, sHeight: 8, dWidth: 24, dHeight: 24, frames: [0, 1], spriteSheet: images },
@@ -30,16 +31,20 @@ const sprites = {
 	shooter: { x: 1, y: 1, sWidth: 13, sHeight: 8, dWidth: 39, dHeight: 24, frames: [0], spriteSheet: images },
 	topExplosion: { x: 73, y: 1, sWidth: 8, sHeight: 8, dWidth: 24, dHeight: 24, frames: [0, 1], spriteSheet: images },
 	explosion: { x: 82, y: 1, sWidth: 8, sHeight: 8, dWidth: 24, dHeight: 24, frames: [0, 1], spriteSheet: images },
-	alianExplosion: { x: 91, y: 1, sWidth: 13, sHeight: 8, dWidth: 39, dHeight: 24, frames: [0], spriteSheet: images }
+	alianExplosion: { x: 91, y: 1, sWidth: 13, sHeight: 8, dWidth: 39, dHeight: 24, frames: [0], spriteSheet: images },
+	shooterExplosion: { x: 105, y: 1, sWidth: 16, sHeight: 8, dWidth: 48, dHeight: 24, frames: [0, 1], spriteSheet: images }
 }
 const worlConfig = {
 	world: { width: 669, height: 727 },
-	shooter: { width: 39, height: 24, color: 'red' },
+	shooter: { width: 39, height: 24 },
 	laserShoot: { width: 3, height: 24, color: 'white' },
-	alianShoot: { width: 3, height: 24, color: 'yellow' }
+	alianShoot: { width: 3, height: 24, color: 'white' }
 };
 let liveAlians = 0;
 let alianGrid = new AlianGrid(5, 11);
+let lives = 3;
+let points = 0;
+let shooters = [];
 
 images.onload = () => {
 	///
@@ -59,7 +64,7 @@ function OnLoad() {
 	/*
 	console.clear();
 	console.log('OnLoad' + (new Date()))
-	console.log('%c Code Started', 'color:red;font-size:18px;')
+	//console.log('%cSpace Invaders %c\nBy Vahid A.', 'color:red;font-size:18px;', 'color:green;font-size:14px;')
 	console.trace('Blah Blah')
 	// monitor in chrome console
 	// breakpoint on attribute
@@ -78,13 +83,42 @@ function OnLoad() {
 }
 function CreateWorld(c) {
 	world = new World(0, 0, c.world.width, c.world.height);
-	wallBottom = new Wall(world.left, 694, world.width, 3, 'white', true);
-	shooter = new Shooter(world.left + (world.width - c.shooter.width) / 2, 629, c.shooter.width, c.shooter.height, 0, 0, c.shooter.color, 'right', sprites.shooter);
-	laserShoot = new LaserShoot(0, 0, c.laserShoot.width, c.laserShoot.height, c.laserShoot.color);
+	wallBottom = new Wall(world.left, 694, world.width, 3, '#00B098', true);
+	shooter = new Shooter(world.left + (world.width - c.shooter.width) / 2, 629, c.shooter.width, c.shooter.height, sprites.shooter);
+	laserShoot = new LaserShoot(0, 0, c.laserShoot.width, c.laserShoot.height, 'white');
 	topExplosion = new TopExplosion(0, 83, 22, 26, sprites.topExplosion);
+	shooterExplosion = new ShooterExplosion(world.left + (world.width - c.shooter.width) / 2, 629, 48, 24, sprites.shooterExplosion);
 	p1Score = new Text(world.left + world.width * 1 / 4, 0, '0', 'white', true, 24, 'Arial', true);
-	p2Score = new Text(world.left + world.width * 3 / 4, 0, '0', 'white', true, 24, 'Arial', true);
 
+	shooter.Explode =  (shooter) => {
+        shooter.enabled = false;
+		shooterExplosion.x = shooter.x + (shooter.width - shooterExplosion.width) /2;
+		shooterExplosion.y = shooter.y;
+		shooterExplosion.lastFrameChangedTime = new Date().getTime();
+		shooterExplosion.frameIndex = 0;
+		shooterExplosion.animate = true;
+		shooterExplosion.animateEnded = () => {
+			shooterExplosion.enabled = false;
+			shooter.x = 0;
+			shooter.y = 629;
+			shooter.enabled = true;
+			controller.ClearBuffer();
+
+			lives--;
+			if (lives > 0)
+				shooters.forEach((shooter, index) => shooter.enabled = index < lives - 1 );
+			else
+				alert('Game Over!');
+
+		};
+		shooterExplosion.enabled = true;
+	}
+
+	for (let sIndex = 0; sIndex < lives - 1; sIndex++) {
+		shooters[sIndex] = new Shooter(world.left + sIndex * (c.shooter.width + 5), world.bottom - c.shooter.height - 2, c.shooter.width, c.shooter.height, sprites.shooter);
+		world.objects.push(shooters[sIndex]);
+	}
+	
 	world.dispatcher = evtDispatcher;
 
 	let alianConfig = {
@@ -95,14 +129,14 @@ function CreateWorld(c) {
 		y: firstWaveY,
 		width: 24,
 		height: 24,
-		xV: 7.5,
+		xV: alianDefalutXV,
 		yV: 0,
-		color: 'yellow',
 		dispatcher: evtDispatcher,
 		sprite: sprites.squid,
 		frameCount: 2,
 		framePerSec: 1.3,
 		grid: alianGrid,
+		point: 30,
 		Shoot: (alian) => {
 			const aShoot = new AlianShoot(alian.left + (alian.width / 2) - c.alianShoot.width / 2, alian.y + alian.height, c.alianShoot.width, c.alianShoot.height, c.alianShoot.color);
 			aShoot.onExplode = (ashoot) => {
@@ -123,55 +157,65 @@ function CreateWorld(c) {
 		}
 	};
 	CreateAlians(alianConfig);
+	alianGrid.objects = alians;
 
 	topExplosion.animateEnded = () => {
 		setTimeout(() => {
 			topExplosion.enabled = false;
 		}, 100);
 	};
+	shooterExplosion.animateEnded = () => {
+		setTimeout(() => {
+			//shooterExplosion.enabled = false;
+		}, 100);
+	};
 
-	let colors = ['red', 'black', 'blue', '#FFFF00', '#00FFFF', '#FF00FF', '#FF8000', '#FF0080', '#80FF00', '#00FF80', '#FFFFFF'];
-
+	let blankDots = [];
+    for (let i = 0; i < 20; i++) blankDots[i] = [];
+	blankDots[0] = [0, 1, 2, 3, 4, 5, 6, 8, 9, 12];
+	blankDots[4] = [0, 1, 2, 3, 5, 6, 7, 10, 11, 15];
+	blankDots[16] = [3,6,7,9,10,11,13,14,15];
+	blankDots[17] = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15];
+	blankDots[18] = [0,4,5,8,9,10,12,13,14];
 	let shields = [];
 	let shieldX = 114;
 	let shieldY = 550;
-
 	for (let shieldNo = 0; shieldNo <= 3; shieldNo++) {
-
 		shields[shieldNo] = new Shield(shieldX, shieldY);
-
-		let index = 0;
+		let blockIndex = 0;
 		for (let r = 0; r <= 3; r++) {
 			for (let c = 0; c <= 4; c++) {
 				const shieldBlockX = shieldX + c * 12;
 				const shieldBlockY = shieldY + r * 12;
 				const shieldBlock = new ShieldBlock(shieldBlockX, shieldBlockY, shields[shieldNo], r, c);
-				shields[shieldNo].objects[index++] = shieldBlock;
+				shields[shieldNo].objects[blockIndex++] = shieldBlock;
 				world.objects.push(shieldBlock);
 
-				let color = colors[Math.floor(Math.random() * 12)];
-				color = 'white'
 				let dotIndex = 0;
 				for (let r = 0; r < 4; r++) {
 					for (let c = 0; c < 4; c++) {
 						const dotX = shieldBlockX + c * 3;
 						const dotY = shieldBlockY + r * 3;
-						const dot = new ShieldDot(dotX, dotY, color, shieldBlock, r , c);
+						const dot = new ShieldDot(dotX, dotY, '#00B098', shieldBlock, r , c);
 						shieldBlock.objects[dotIndex++] = dot;
 						world.objects.push(dot);
 					}
 				}
+				blankDots[blockIndex - 1].forEach((dotIndex)=>{
+					shieldBlock.objects[dotIndex].enabled = false;
+				});
 			}
 		}
 		shieldX += 60 +  67;
 	}
 
+	world.objects.push(alianGrid);
 	world.objects.push(wallBottom);
 	world.objects.push(shooter);
 	world.objects.push(laserShoot);
 	world.objects.push(topExplosion);
+	world.objects.push(shooterExplosion);
 	world.objects.push(p1Score);
-	world.objects.push(p2Score);
 	game.objects.push(world);
 }
 function CreateAlians(config) {
@@ -181,6 +225,7 @@ function CreateAlians(config) {
 	config.sprite = sprites.crab;
 	config.width = 32;
 	config.y += 48;
+	config.point = 20;
 	AddAlianRow(config);
 	config.y += 48;
 	AddAlianRow(config);
@@ -188,6 +233,7 @@ function CreateAlians(config) {
 	config.sprite = sprites.octopus;
 	config.width = 36;
 	config.y += 48;
+	config.point = 10;
 	AddAlianRow(config);
 	config.y += 48;
 	AddAlianRow(config);
@@ -198,7 +244,6 @@ function AddAlianRow(config) {
 	for (let index = 0; index < 11; index++) {
 		const alian = new Alian(config);
 		alian.onExplode = (alian) => {
-			console.log('Alian has been exploded.')
 			const x = alian.left + alian.width / 2 - 39 / 2;
 			const y = alian.top + alian.height / 2 - 24 / 2;
 			const alianExplosion = new AlianExplosion(x, y, 39, 24, sprites.alianExplosion);
@@ -212,23 +257,23 @@ function AddAlianRow(config) {
 		}
 		world.objects.push(alian);
 		alians.push(alian);
-		config.x += 36 + 12;
+		config.x += 36 + 9;
 		config.index++;
 	}
 	config.x = xBak;
 }
 function SendNextAliansWave() {
 	waveNo++;
+	console.log(waveNo, firstWaveY + waveAdvance * (waveNo - 1));
 	let now = new Date().getTime();
-	//laserShoot.lastUpdate = new Date().getTime();
 	for (let row = 0; row < 5; row++)
 		for (let col = 0; col < 11; col++) {
 			let alian = alians[row * 11 + col];
-			alian.y = firstWaveY + waveAdvance * (waveNo - 1) + row * 47;
+			alian.framePerSec = 1.3;
+			alian.y = firstWaveY + waveAdvance * (waveNo - 1) + row * 48;
 			alian.x = col * (36 + 12);
-			alian.xV = 7.5;
+			alian.xV = alianDefalutXV;
 			alian.lastUpdate = now;
-			alian.lastTry2Shoot = new Date().getTime() - Math.floor(Math.random() * alian.shootInterval);
 			alian.enabled = true;
 		}
 	liveAlians = alians.length;
@@ -237,9 +282,18 @@ function SendNextAliansWave() {
 function AddEvents() {
 	window.addEventListener('resize', () => Resize(canvas, world));
 	evtDispatcher.addEventListener('AnAlianKilled', (event) => {
-		alianGrid.SetAlianKilled(event.detail.alianIndex)
-		const speed = --liveAlians > 0 ? Math.sign(alians[0].xV) * (0.8 + 378 / liveAlians ** 1.01) : 0;
-		alians.forEach(alian => alian.xV = speed);
+		const pBak = parseInt(points / 1000);
+		points += event.detail.point;
+		if (parseInt(points / 1000) !== pBak)
+			IncreaseLive();
+		UpdateScore();
+		alianGrid.SetAlianKilled(event.detail.alianIndex);
+		const speed = --liveAlians > 0 ? Math.sign(alians[0].xV) * (0.8 + 450 / liveAlians ** 0.9705) : 0;
+		alians.forEach((alian) => {
+			alian.xV = speed;
+			alian.framePerSec *= 1.05;
+		});
+		alianGrid.shootInterval = 1000 - 500 * (55 - liveAlians) / 54;
 	});
 }
 function Resize(canvas, world) {
@@ -254,9 +308,8 @@ function Resize(canvas, world) {
 		canvas.width = docHeight / ratio;
 	}
 }
-function ShowScores() {
-	p1Score.text = player1.score;
-	p2Score.text = player2.score;
+function UpdateScore() {
+	p1Score.text = points;
 }
 function BuildRAFPolyfill() {
 	window.requestAnimationFrame =
@@ -310,14 +363,16 @@ function Render() {
 	}
 
 	if (!gamePaused) {
-		if (controller.isPressed('ArrowRight'))
-			shooter.moveRight();
-		if (controller.isPressed('ArrowLeft'))
-			shooter.moveLeft();
-		if (controller.isPressed('ArrowUp'))
-			shooter.y -= 4;
-		if (controller.isPressed('ArrowDown'))
-			shooter.y += 4;
+		if (shooter.enabled) {
+			if (controller.isPressed('ArrowRight'))
+				shooter.moveRight();
+			if (controller.isPressed('ArrowLeft'))
+				shooter.moveLeft();
+			if (controller.isPressed('ArrowUp'))
+				shooter.y -= 4;
+			if (controller.isPressed('ArrowDown'))
+				shooter.y += 4;
+		}
 		if (controller.isPressed(' '))
 			ShootLaser();
 	}
@@ -354,7 +409,7 @@ function Render() {
 		if (distToLeft < 0 || distToRight < 0) {
 			alians.forEach(alian => {
 				alian.xV = -alian.xV;
-				alian.y += alian.height * 0.2;
+				alian.y += alian.height;
 				if (distToRight < 0)
 					alian.x += distToRight;
 				else if (distToLeft < 0)
@@ -385,8 +440,6 @@ function Render() {
 				topExplosion.animate = true;
 			}
 			topExplosion.x = laserShoot.x - topExplosion.width / 2;
-			//topExplosion.y = laserShoot.y - topExplosion.height / 2;
-			//topExplosion.y = 83;
 			laserShoot.enabled = false;
 			laserShoot.y = shooter.y - laserShoot.height;
 		}
@@ -394,16 +447,13 @@ function Render() {
 
 	display.clear();
 
-	world.color = 'green'
-	p1Score.text = world.x;
+	//world.color = 'green'
 	display.drawBox(world);
 
 	world.objects.forEach(gObj => {
 		if (gObj.enabled) {
 			if (gObj instanceof Wall)
 				display.drawBox(gObj);
-			else if (gObj instanceof Ball && gObj.visible)
-				display.drawDisk(gObj);
 			else if (gObj instanceof Text)
 				display.drawText(gObj);
 			else if (gObj instanceof Shooter)
@@ -420,10 +470,12 @@ function Render() {
 				display.drawSprite(gObj);
 			else if (gObj instanceof AlianExplosion)
 				display.drawSprite(gObj);
-			if (gObj instanceof ShieldDot)
+			else if (gObj instanceof ShieldDot)
 				display.drawBox(gObj);
-			if (gObj instanceof Shield)
+			else if (gObj instanceof Shield)
 				display.drawRectangle(gObj);
+			else if (gObj instanceof ShooterExplosion)
+				display.drawSprite(gObj);
 		}
 	});
 
@@ -449,5 +501,12 @@ function PlayGame(pa) {
 	world.objects.forEach((gObj, index) => gObj.SetPause(gamePaused));
 	console.log('Resummed: ' + pa);
 }
-//558
-//545	487
+function IncreaseLive() {
+	lives++;
+	if (shooters.length < lives - 1) {
+		const sIndex = shooters.length;
+		shooters[sIndex] = new Shooter(world.left + sIndex * (worlConfig.shooter.width + 5), world.bottom - worlConfig.shooter.height - 2, worlConfig.shooter.width, worlConfig.shooter.height, sprites.shooter);
+		world.objects.push(shooters[sIndex]);
+	}
+	shooters.forEach((shooter, index) => shooter.enabled = index < lives - 1 );
+}
