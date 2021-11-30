@@ -692,7 +692,6 @@ export class ShieldDot extends Rectangle {
         this.parent = parent;
         this.row = row;
         this.col = col;
-     
         this.collidable = false;
         this.animate = false;
  
