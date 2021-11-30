@@ -2,6 +2,8 @@ import { Game, World, Wall, Text, Shooter, Alian, LaserShoot, TopExplosion, Alia
 import { Display } from './Display.js';
 import { Controller } from './Controller.js';
 
+export const ExplosionType = {Round: 1, FlatBottom: 2};
+const green = '#00B098';
 let canvas;
 const game = new Game();
 const controller = new Controller();
@@ -29,6 +31,7 @@ const sprites = {
 	crab: { x: 31, y: 1, sWidth: 11, sHeight: 8, dWidth: 33, dHeight: 24, frames: [0, 1], spriteSheet: images },
 	octopus: { x: 43, y: 1, sWidth: 12, sHeight: 8, dWidth: 36, dHeight: 24, frames: [0, 1], spriteSheet: images },
 	shooter: { x: 1, y: 1, sWidth: 13, sHeight: 8, dWidth: 39, dHeight: 24, frames: [0], spriteSheet: images },
+	greenShooter: { x: 1, y: 10, sWidth: 13, sHeight: 8, dWidth: 39, dHeight: 24, frames: [0], spriteSheet: images },
 	topExplosion: { x: 73, y: 1, sWidth: 8, sHeight: 8, dWidth: 24, dHeight: 24, frames: [0, 1], spriteSheet: images },
 	explosion: { x: 82, y: 1, sWidth: 8, sHeight: 8, dWidth: 24, dHeight: 24, frames: [0, 1], spriteSheet: images },
 	alianExplosion: { x: 91, y: 1, sWidth: 13, sHeight: 8, dWidth: 39, dHeight: 24, frames: [0], spriteSheet: images },
@@ -84,13 +87,13 @@ function OnLoad() {
 }
 function CreateWorld(c) {
 	world = new World(0, 0, c.world.width, c.world.height);
-	wallBottom = new Wall(world.left, 694, world.width, 3, '#00B098', true);
+	wallBottom = new Wall(world.left, 694, world.width, 3, green, true);
 	shooter = new Shooter(world.left + (world.width - c.shooter.width) / 2, 629, c.shooter.width, c.shooter.height, sprites.shooter);
 	laserShoot = new LaserShoot(0, 0, c.laserShoot.width, c.laserShoot.height, 'white');
 	topExplosion = new TopExplosion(0, 83, 22, 26, sprites.topExplosion);
 	shooterExplosion = new ShooterExplosion(world.left + (world.width - c.shooter.width) / 2, 629, 48, 24, sprites.shooterExplosion);
 	p1Score = new Text(world.left + world.width * 1 / 4, 0, '0', 'white', true, 24, 'Arial', true);
-	livesCountText = new Text(25, world.height - 30, lives, '#00B098', true, 32, 'Arial', true);
+	livesCountText = new Text(25, world.height - 30, lives, green, true, 32, 'Arial', true);
 
 	shooter.Explode =  (shooter) => {
         shooter.enabled = false;
@@ -117,7 +120,7 @@ function CreateWorld(c) {
 		shooterExplosion.enabled = true;
 	}
 	for (let sIndex = 0; sIndex < lives - 1; sIndex++) {
-		shooters[sIndex] = new Shooter(60  + sIndex * (c.shooter.width + 5), world.bottom - c.shooter.height - 2, c.shooter.width, c.shooter.height, sprites.shooter);
+		shooters[sIndex] = new Shooter(60  + sIndex * (c.shooter.width + 5), world.bottom - c.shooter.height - 2, c.shooter.width, c.shooter.height, sprites.greenShooter);
 		world.objects.push(shooters[sIndex]);
 	}
 	
@@ -141,8 +144,13 @@ function CreateWorld(c) {
 		point: 30,
 		Shoot: (alian) => {
 			const aShoot = new AlianShoot(alian.left + (alian.width / 2) - c.alianShoot.width / 2, alian.y + alian.height, c.alianShoot.width, c.alianShoot.height, c.alianShoot.color);
-			aShoot.onExplode = (ashoot) => {
-				const explosion = new Explosion(ashoot.left + ashoot.width / 2 - 22 / 2, wallBottom.y - 23, 24, 24, sprites.explosion);
+			aShoot.onExplode = (ashoot, impactTop, explosionType) => {
+				let explosion;
+				if (explosionType === ExplosionType.FlatBottom)
+					explosion = new Explosion(ashoot.left + ashoot.width / 2 - 22 / 2, impactTop - 22, 24, 24, sprites.explosion);
+				else if (explosionType === ExplosionType.Round)
+					explosion = new Explosion(ashoot.left + ashoot.width / 2 - sprites.topExplosion.dWidth / 2, impactTop - sprites.topExplosion.dHeight / 2, 24, 24, sprites.topExplosion);
+
 				explosion.lastFrameChangedTime = new Date().getTime();
 				explosion.frameIndex = 0;
 				explosion.animate = true;
@@ -198,7 +206,7 @@ function CreateWorld(c) {
 					for (let c = 0; c < 4; c++) {
 						const dotX = shieldBlockX + c * 3;
 						const dotY = shieldBlockY + r * 3;
-						const dot = new ShieldDot(dotX, dotY, '#00B098', shieldBlock, r , c);
+						const dot = new ShieldDot(dotX, dotY, green, shieldBlock, r , c);
 						shieldBlock.objects[dotIndex++] = dot;
 						world.objects.push(dot);
 					}
@@ -487,7 +495,7 @@ function Render() {
 			world.objects.splice(index, 1);
         else if (gObj instanceof AlianShoot) {
 			if (gObj.bottom > wallBottom.y)
-				gObj.Explode();
+				gObj.Explode(wallBottom.y, ExplosionType.FlatBottom);
         }
     });
 
@@ -509,7 +517,7 @@ function IncreaseLive() {
 	UpdateLivesCountText();
 	if (shooters.length < lives - 1) {
 		const sIndex = shooters.length;
-		shooters[sIndex] = new Shooter(60 + sIndex * (worlConfig.shooter.width + 5), world.bottom - worlConfig.shooter.height - 2, worlConfig.shooter.width, worlConfig.shooter.height, sprites.shooter);
+		shooters[sIndex] = new Shooter(60 + sIndex * (worlConfig.shooter.width + 5), world.bottom - worlConfig.shooter.height - 2, worlConfig.shooter.width, worlConfig.shooter.height, sprites.greenShooter);
 		world.objects.push(shooters[sIndex]);
 	}
 	shooters.forEach((shooter, index) => shooter.enabled = index < lives - 1 );

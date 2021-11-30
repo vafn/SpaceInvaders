@@ -1,3 +1,4 @@
+import { ExplosionType } from './Main.js';
 export class Game {
 
     constructor() {
@@ -197,28 +198,6 @@ export class Shooter extends Rectangle {
     moveLeft() {
         this.xV = -this.defaultXSpeed;
     }
-
-    isColid(obj2Check) {
-        if (obj2Check.type === 'Wall') {
-            if (obj2Check.collidable) {
-                let topBottom =
-                    (this.top < obj2Check.bottom && this.top > obj2Check.top) ||
-                    (this.bottom > obj2Check.top &&
-                        this.bottom < obj2Check.bottom);
-                topBottom =
-                    topBottom ||
-                    (this.top < obj2Check.top &&
-                        this.bottom > obj2Check.bottom);
-                let leftRight =
-                    (this.left < obj2Check.right &&
-                        this.left > obj2Check.left) ||
-                    (this.right > obj2Check.left &&
-                        this.right < obj2Check.right);
-                return topBottom && leftRight;
-            }
-        }
-        return false;
-    }
 }
 export class Alian extends Rectangle {
     constructor(config) {
@@ -269,10 +248,11 @@ export class Alian extends Rectangle {
         this.right = this._x + this.width;
         this.bottom = this.y + this.height;
     }
-    Update() {
+    Update(objects) {
         if (this.enabled) {
             this.UpdateLocation();
             this.UpdateSprite();
+            this.Check4Collision(objects);
         }
     }
     UpdateLocation() {
@@ -291,6 +271,35 @@ export class Alian extends Rectangle {
     Explode() {
         this.enabled = false;
         this.onExplode(this);
+    }
+    Check4Collision(objects) {
+        objects.forEach((destObj) => {
+            if (destObj.enabled && destObj.collidable && destObj !== this) {
+                if (this.isColid(destObj)) {
+                    
+                    if (destObj.type === 'ShieldBlock') 
+                        for (let d=0; d < destObj.objects.length; d++)
+                            destObj.objects[d].collidable = true;
+                    if (destObj.type === 'Shooter') {
+                        this.Explode();
+                        this.dispatcher.dispatchEvent(
+                            new CustomEvent('AnAlianKilled', { detail: {
+                                alianIndex: this.index,
+                                point: this.point
+                            }})
+                        );
+                        destObj.Explode(destObj);
+                    } else if (destObj.type === 'ShieldDot') {
+                        destObj.parent.CollisionAt(destObj.row, destObj.col);
+                    }
+                }
+            }
+        });
+    }
+    isColid(obj2Check) {
+        if (this.x >= obj2Check.x + obj2Check.width || this.x + this.width <= obj2Check.x || this.y >= obj2Check.y + obj2Check.height || this.y + this.height <= obj2Check.y)
+            return false;
+        return true;
     }
     set x(value) {
         this._x = value;
@@ -341,6 +350,9 @@ export class LaserShoot extends Rectangle {
         objects.forEach((destObj) => {
             if (destObj.enabled && destObj.collidable && destObj !== this) {
                 if (this.isColid(destObj)) {
+                    if (destObj.type === 'ShieldBlock') 
+                        for (let d=0; d < destObj.objects.length; d++)
+                            destObj.objects[d].collidable = true;
                     if (destObj.type === 'Alian') {
                         this.enabled = false;
                         destObj.Explode();
@@ -350,16 +362,13 @@ export class LaserShoot extends Rectangle {
                                 point: destObj.point
                             }})
                         );
-                    } else {
-                        if (destObj.type === 'ShieldBlock')
-                            for (let d=0; d < destObj.objects.length; d++)
-                                destObj.objects[d].collidable = true;
-
-                        if (destObj.type === 'ShieldDot') {
-                            this.enabled = false;
-                            this.yV = 0;
-                            destObj.parent.CollisionAt(destObj.row, destObj.col);
-                        }
+                    } else if (destObj.type === 'ShieldDot') {
+                        this.enabled = false;
+                        this.yV = 0;
+                        destObj.parent.CollisionAt(destObj.row, destObj.col);
+                    } else if (destObj.type === 'AlianShoot') {
+                        this.enabled = false;
+                        destObj.Explode(this.top, ExplosionType.Round);
                     }
                 }
             }
@@ -470,7 +479,7 @@ export class AlianShoot extends Rectangle {
         this.bottom = y + h;
         this.left = x;
         this.right = x + w;
-        this.yV = 250;
+        this.yV = 250; //250;
         this.color = color;
         this.conceded = false;
         this.type = 'AlianShoot';
@@ -495,25 +504,24 @@ export class AlianShoot extends Rectangle {
                 this.bottom = this.y + this.height;
             }
         }
-    }//00B098
+    }
     Check4Collision(objects){
         objects.forEach((destObj) => {
             if (destObj.enabled && destObj.collidable && destObj !== this) {
                 if (this.isColid(destObj)) {
-                    if (destObj.type === 'Shooter') {
+
+                    if (destObj.type === 'ShieldBlock')
+                        for (let d = 0; d < destObj.objects.length; d++)
+                            destObj.objects[d].collidable = true;
+
+                    if (destObj.type === 'zzzzzShooter') {
                         this.enabled = false;
 						this.Garbage = true;
                         destObj.Explode(destObj);
-                    } else {
-                        if (destObj.type === 'ShieldBlock')
-                            for (let d = 0; d < destObj.objects.length; d++)
-                                destObj.objects[d].collidable = true;
-
-                        if (destObj.type === 'ShieldDot') {
-                            this.enabled = false;
-                            this.yV = 0;
-                            destObj.parent.CollisionAt(destObj.row, destObj.col);
-                        }
+                    } else if (destObj.type === 'ShieldDot') {
+                        this.enabled = false;
+                        this.yV = 0;
+                        destObj.parent.CollisionAt(destObj.row, destObj.col);
                     }
                 }
             }
@@ -524,10 +532,10 @@ export class AlianShoot extends Rectangle {
             return false;
         return true;
     }
-    Explode() {
+    Explode(impactTop, explosionType) {
         this.yV = 0;
         this.enabled = false;
-        this.onExplode(this);
+        this.onExplode(this, impactTop, explosionType);
         this.Garbage = true;
     }
 }
