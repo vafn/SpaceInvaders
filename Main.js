@@ -1,4 +1,4 @@
-import { Game, World, Wall, Text, Shooter, Alian, LaserShoot, TopExplosion, AlianGrid, AlianShoot,Explosion, AlianExplosion, Shield, ShieldBlock, ShieldDot, ShooterExplosion } from './Game.js';
+import { Game, World, Wall, Text, Shooter, Alian, LaserShoot, TopExplosion, AlianGrid, AlianShoot,Explosion, AlianExplosion, Shield, ShieldBlock, ShieldDot, ShooterExplosion, Spaceship } from './Game.js';
 import { Display } from './Display.js';
 import { Controller } from './Controller.js';
 
@@ -35,7 +35,8 @@ const sprites = {
 	topExplosion: { x: 73, y: 1, sWidth: 8, sHeight: 8, dWidth: 24, dHeight: 24, frames: [0, 1], spriteSheet: images },
 	explosion: { x: 82, y: 1, sWidth: 8, sHeight: 8, dWidth: 24, dHeight: 24, frames: [0, 1], spriteSheet: images },
 	alianExplosion: { x: 91, y: 1, sWidth: 13, sHeight: 8, dWidth: 39, dHeight: 24, frames: [0], spriteSheet: images },
-	shooterExplosion: { x: 105, y: 1, sWidth: 16, sHeight: 8, dWidth: 48, dHeight: 24, frames: [0, 1], spriteSheet: images }
+	shooterExplosion: { x: 105, y: 1, sWidth: 16, sHeight: 8, dWidth: 48, dHeight: 24, frames: [0, 1], spriteSheet: images },
+	spaceship: { x: 56, y: 1, sWidth: 16, sHeight: 8, dWidth: 48, dHeight: 24, frames: [0], spriteSheet: images }
 }
 const worlConfig = {
 	world: { width: 669, height: 727 },
@@ -49,6 +50,7 @@ let lives = 3;
 let points = 0;
 let shooters = [];
 let livesCountText = null;
+let spaceship = null;
 
 images.onload = () => {
 	///
@@ -92,8 +94,25 @@ function CreateWorld(c) {
 	laserShoot = new LaserShoot(0, 0, c.laserShoot.width, c.laserShoot.height, 'white');
 	topExplosion = new TopExplosion(0, 83, 22, 26, sprites.topExplosion);
 	shooterExplosion = new ShooterExplosion(world.left + (world.width - c.shooter.width) / 2, 629, 48, 24, sprites.shooterExplosion);
-	p1Score = new Text(world.left + world.width * 1 / 4, 0, '0', 'white', true, 24, 'Arial', true);
+	p1Score = new Text(world.left + world.width * 1 / 4, 10, '0', 'white', true, 24, 'Arial', true);
 	livesCountText = new Text(25, world.height - 30, lives, green, true, 32, 'Arial', true);
+	spaceship = new Spaceship(0, firstWaveY - 2 * 24, 48, 24, 100, world.width, sprites.spaceship);
+	spaceship.onExplode = (ashoot, impactTop) => {
+		console.log(spaceship.point)
+		UpdatePoints(spaceship.point);
+		const explosion = new Explosion(ashoot.left + ashoot.width / 2 - sprites.topExplosion.dWidth / 2, impactTop - sprites.topExplosion.dHeight / 2, 24, 24, sprites.topExplosion);
+		explosion.lastFrameChangedTime = new Date().getTime();
+		explosion.frameIndex = 0;
+		explosion.animate = true;
+			explosion.animateEnded = () => {
+			setTimeout(() => {
+				explosion.enabled = false;
+				explosion.Garbage = true;
+			}, 100);
+		};
+		world.objects.push(explosion);
+	}
+	spaceship.ResetToReappear();
 
 	shooter.Explode =  (shooter) => {
         shooter.enabled = false;
@@ -227,6 +246,7 @@ function CreateWorld(c) {
 	world.objects.push(shooterExplosion);
 	world.objects.push(p1Score);
 	world.objects.push(livesCountText);
+	world.objects.push(spaceship);
 	game.objects.push(world);
 }
 function CreateAlians(config) {
@@ -293,11 +313,7 @@ function SendNextAliansWave() {
 function AddEvents() {
 	window.addEventListener('resize', () => Resize(canvas, world));
 	evtDispatcher.addEventListener('AnAlianKilled', (event) => {
-		const pBak = parseInt(points / 1000);
-		points += event.detail.point;
-		if (parseInt(points / 1000) !== pBak)
-			IncreaseLive();
-		UpdateScore();
+		UpdatePoints(event.detail.point);
 		alianGrid.SetAlianKilled(event.detail.alianIndex);
 		const speed = --liveAlians > 0 ? Math.sign(alians[0].xV) * (0.8 + 450 / liveAlians ** 0.9705) : 0;
 		alians.forEach((alian) => {
@@ -319,7 +335,11 @@ function Resize(canvas, world) {
 		canvas.width = docHeight / ratio;
 	}
 }
-function UpdateScore() {
+function UpdatePoints(point) {
+	const pBak = parseInt(points / 1000);
+	points += point;
+	if (parseInt(points / 1000) !== pBak)
+		IncreaseLive();
 	p1Score.text = points;
 }
 function BuildRAFPolyfill() {
@@ -458,7 +478,7 @@ function Render() {
 
 	display.clear();
 
-	//world.color = 'green'
+	world.color = 'green'
 	display.drawBox(world);
 
 	world.objects.forEach(gObj => {
@@ -487,8 +507,22 @@ function Render() {
 				display.drawRectangle(gObj);
 			else if (gObj instanceof ShooterExplosion)
 				display.drawSprite(gObj);
+			else if (gObj instanceof Spaceship)
+				display.drawSprite(gObj);
 		}
 	});
+
+/*
+	const myFont = new FontFace('My Font', 'url(http://127.0.0.1:5500/PixelateRegular-Ygya.ttf)');
+
+	myFont.load().then((font) => {
+	  //document.fonts.add(font);
+	
+	  console.log('Font loaded');
+	}).catch((sss) => {
+		console.log(sss);
+	});
+*/
 
 	world.objects.forEach((gObj, index) => {
         if (gObj.Garbage)

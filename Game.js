@@ -369,6 +369,9 @@ export class LaserShoot extends Rectangle {
                     } else if (destObj.type === 'AlianShoot') {
                         this.enabled = false;
                         destObj.Explode(this.top, ExplosionType.Round);
+                    } else if (destObj.type === 'Spaceship') {
+                        this.enabled = false;
+                        destObj.Explode(this.top, ExplosionType.Round);
                     }
                 }
             }
@@ -731,5 +734,79 @@ export class ShooterExplosion extends Rectangle {
     }
     Update() {
         this.UpdateSprite();
+    }
+}
+export class Spaceship extends Rectangle {
+    constructor(x, y, w, h, xV, maxXMovement, sprite) {
+        super();
+        this.x = x;
+        this.y = y;
+        this.width = w;
+        this.height = h;
+        this.top = y;
+        this.bottom = y + h;
+        this.left = x;
+        this.right = x + w;
+        this.xV = xV;
+        this.type = 'Spaceship';
+        this.animate = false;
+        this.sprite = sprite;
+        this.frameCount = 1;
+        this.collidable = true;
+        this.NextAppearance = 0;
+        this.maxXMovement = maxXMovement;
+        this.speed = xV;
+        this.dir = -1;
+        this.enabled = false;
+        this.point = 50;
+    }
+    Update() {
+        if (this.enabled) {
+            this.UpdateLocation();
+            //this.UpdateSprite();
+        }
+        this.UpdateReappear();
+    }
+    UpdateLocation() {
+        let now = new Date().getTime();
+        let tPassed = now - this.lastUpdate;
+        this.lastUpdate = now;
+        if (!this.paused) {
+            this.x = this.x + (this.xV * tPassed) / 1000;
+            this.left = this.x;
+            this.right = this.x + this.width;
+            if (this.x < - this.width -1 || this.x > this.maxXMovement + 1)
+                this.ResetToReappear();
+        }
+    }
+    Explode(impactTop, explosionType) {
+        this.ResetToReappear();
+        this.onExplode(this, impactTop);
+    }
+    ResetToReappear() {
+        this.enabled = false;
+        this.xV = 0;
+        this.collidable = false;
+        this.point = 50 * Math.floor(1 + Math.random() * 4);
+        this.NextAppearance = new Date().getTime() + 5000 + Math.random() * 5000;
+    }
+    UpdateReappear() {
+        if (!this.enabled) {
+            let now = new Date().getTime();
+            if (this.NextAppearance < now) {
+                let now = new Date().getTime();
+                this.lastUpdate = now;
+                this.collidable = true;
+                this.dir = Math.random() > 0.5 ? 1 : -1;
+                if (this.dir > 0)
+                    this.x = - this.width;
+                else
+                    this.x = this.maxXMovement;
+                this.left = this.x;
+                this.right = this.x + this.width;
+                this.xV = this.dir * this.speed;
+                this.enabled = true;
+            }
+        }
     }
 }
