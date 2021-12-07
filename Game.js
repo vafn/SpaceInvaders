@@ -810,3 +810,24 @@ export class Spaceship extends Rectangle {
         }
     }
 }
+export class SpaceshipExplosion extends Rectangle {
+    constructor(x, y, w, h, sprite) {
+        super();
+        this.x = x;
+        this.y = y;
+        this.width = w;
+        this.height = h;
+        this.top = y;
+        this.bottom = y + h;
+        this.left = x;
+        this.right = x + w;
+        this.type = 'SpaceshipExplosion';
+        this.animate = false;
+        this.sprite = sprite;
+        this.frameCount = 1;
+        this.collidable = false;
+    }
+    Update() {
+        this.UpdateSprite();
+    }
+}

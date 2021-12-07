@@ -1,4 +1,4 @@
-import { Game, World, Wall, Text, Shooter, Alian, LaserShoot, TopExplosion, AlianGrid, AlianShoot,Explosion, AlianExplosion, Shield, ShieldBlock, ShieldDot, ShooterExplosion, Spaceship } from './Game.js';
+import { Game, World, Wall, Text, Shooter, Alian, LaserShoot, TopExplosion, AlianGrid, AlianShoot,Explosion, AlianExplosion, Shield, ShieldBlock, ShieldDot, ShooterExplosion, Spaceship, SpaceshipExplosion } from './Game.js';
 import { Display } from './Display.js';
 import { Controller } from './Controller.js';
 
@@ -36,7 +36,8 @@ const sprites = {
 	explosion: { x: 82, y: 1, sWidth: 8, sHeight: 8, dWidth: 24, dHeight: 24, frames: [0, 1], spriteSheet: images },
 	alianExplosion: { x: 91, y: 1, sWidth: 13, sHeight: 8, dWidth: 39, dHeight: 24, frames: [0], spriteSheet: images },
 	shooterExplosion: { x: 105, y: 1, sWidth: 16, sHeight: 8, dWidth: 48, dHeight: 24, frames: [0, 1], spriteSheet: images },
-	spaceship: { x: 56, y: 1, sWidth: 16, sHeight: 8, dWidth: 48, dHeight: 24, frames: [0], spriteSheet: images }
+	spaceship: { x: 56, y: 1, sWidth: 16, sHeight: 8, dWidth: 48, dHeight: 24, frames: [0], spriteSheet: images },
+	spaceshipExplosion: { x: 122, y: 1, sWidth: 21, sHeight: 8, dWidth: 63, dHeight: 24, frames: [0], spriteSheet: images },
 }
 const worlConfig = {
 	world: { width: 669, height: 727 },
@@ -94,23 +95,26 @@ function CreateWorld(c) {
 	laserShoot = new LaserShoot(0, 0, c.laserShoot.width, c.laserShoot.height, 'white');
 	topExplosion = new TopExplosion(0, 83, 22, 26, sprites.topExplosion);
 	shooterExplosion = new ShooterExplosion(world.left + (world.width - c.shooter.width) / 2, 629, 48, 24, sprites.shooterExplosion);
-	p1Score = new Text(world.left + world.width * 1 / 4, 10, '0', 'white', true, 24, 'Arial', true);
+	p1Score = new Text(world.left + world.width * 1 / 4, 10, 'SCORE: 0', 'white', true, 24, 'Arial', true);
 	livesCountText = new Text(25, world.height - 30, lives, green, true, 32, 'Arial', true);
 	spaceship = new Spaceship(0, firstWaveY - 2 * 24, 48, 24, 100, world.width, sprites.spaceship);
 	spaceship.onExplode = (ashoot, impactTop) => {
-		console.log(spaceship.point)
 		UpdatePoints(spaceship.point);
-		const explosion = new Explosion(ashoot.left + ashoot.width / 2 - sprites.topExplosion.dWidth / 2, impactTop - sprites.topExplosion.dHeight / 2, 24, 24, sprites.topExplosion);
-		explosion.lastFrameChangedTime = new Date().getTime();
-		explosion.frameIndex = 0;
-		explosion.animate = true;
-			explosion.animateEnded = () => {
+		const spaceshipExplosion = new SpaceshipExplosion(spaceship.left + spaceship.width / 2 - sprites.spaceshipExplosion.dWidth / 2, spaceship.top, 24, 24, sprites.spaceshipExplosion);
+		world.objects.push( spaceshipExplosion);
+		setTimeout(() => {
+			spaceshipExplosion.enabled = false;
+			spaceshipExplosion.Garbage = true;
+
+			const spaceshipPoints = new Text(spaceshipExplosion.left + spaceshipExplosion.width / 2, spaceshipExplosion.top, spaceship.point, 'red', true, 28, 'Arial', true);
+			world.objects.push(spaceshipPoints);
 			setTimeout(() => {
-				explosion.enabled = false;
-				explosion.Garbage = true;
-			}, 100);
-		};
-		world.objects.push(explosion);
+				spaceshipPoints.enabled = false;
+				spaceshipPoints.Garbage = true;
+			}, 1000);
+
+		}, 500);
+		
 	}
 	spaceship.ResetToReappear();
 
@@ -295,7 +299,6 @@ function AddAlianRow(config) {
 }
 function SendNextAliansWave() {
 	waveNo++;
-	console.log(waveNo, firstWaveY + waveAdvance * (waveNo - 1));
 	let now = new Date().getTime();
 	for (let row = 0; row < 5; row++)
 		for (let col = 0; col < 11; col++) {
@@ -340,7 +343,7 @@ function UpdatePoints(point) {
 	points += point;
 	if (parseInt(points / 1000) !== pBak)
 		IncreaseLive();
-	p1Score.text = points;
+	p1Score.text = 'SCORE: ' + points;
 }
 function BuildRAFPolyfill() {
 	window.requestAnimationFrame =
@@ -478,7 +481,7 @@ function Render() {
 
 	display.clear();
 
-	world.color = 'green'
+	//world.color = 'green'
 	display.drawBox(world);
 
 	world.objects.forEach(gObj => {
@@ -508,6 +511,8 @@ function Render() {
 			else if (gObj instanceof ShooterExplosion)
 				display.drawSprite(gObj);
 			else if (gObj instanceof Spaceship)
+				display.drawSprite(gObj);
+			else if (gObj instanceof SpaceshipExplosion)
 				display.drawSprite(gObj);
 		}
 	});
