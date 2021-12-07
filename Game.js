@@ -17,9 +17,10 @@ export class Game {
         this.repeat = 0;
         this.repeatCount = 0;
         this.lastFrameChangedTime = new Date().getTime();
-        this.animateEnded = () => {};
         this.paused = false;
         this.Garbage = false;
+        this.onAnimateEnd = () => {};
+        this.onExplode = () => {};
     }
     Update() {
         this.objects.forEach((object) => object.Update());
@@ -40,7 +41,7 @@ export class Game {
                             this.animate = false;
                             this.repeatCount = 0;
                             this.frameIndex = this.frameCount - 1;
-                            this.animateEnded();
+                            this.onAnimateEnd();
                         } else
                             this.frameIndex = 0;
                     } else
@@ -198,18 +199,22 @@ export class Shooter extends Rectangle {
     moveLeft() {
         this.xV = -this.defaultXSpeed;
     }
+    Explode() {
+        this.enabled = false;
+        this.onExplode(this);
+    }
 }
 export class Alian extends Rectangle {
     constructor(config) {
         super();
         this._x = 0;
         this.y = 100;
-        this.width = 40;
-        this.height = 40;
+        this.width = 24;
+        this.height = 24;
         this.top = 0;
-        this.bottom = 40;
+        this.bottom = 24;
         this.left = 0;
-        this.right = 40;
+        this.right = 24;
         this.xV = 0;
         this.yV = 0;
         this.conceded = false;
@@ -517,10 +522,10 @@ export class AlianShoot extends Rectangle {
                         for (let d = 0; d < destObj.objects.length; d++)
                             destObj.objects[d].collidable = true;
 
-                    if (destObj.type === 'zzzzzShooter') {
+                    if (destObj.type === 'Shooter') {
                         this.enabled = false;
 						this.Garbage = true;
-                        destObj.Explode(destObj);
+                        destObj.Explode();
                     } else if (destObj.type === 'ShieldDot') {
                         this.enabled = false;
                         this.yV = 0;

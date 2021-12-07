@@ -1,4 +1,4 @@
-import { Game, World, Wall, Text, Shooter, Alian, LaserShoot, TopExplosion, AlianGrid, AlianShoot,Explosion, AlianExplosion, Shield, ShieldBlock, ShieldDot, ShooterExplosion, Spaceship, SpaceshipExplosion } from './Game.js';
+import { Game, World, Wall, Text, Shooter, Alian, LaserShoot, TopExplosion, AlianGrid, AlianShoot, Explosion, AlianExplosion, Shield, ShieldBlock, ShieldDot, ShooterExplosion, Spaceship, SpaceshipExplosion } from './Game.js';
 import { Display } from './Display.js';
 import { Controller } from './Controller.js';
 
@@ -37,6 +37,7 @@ const sprites = {
 	alianExplosion: { x: 91, y: 1, sWidth: 13, sHeight: 8, dWidth: 39, dHeight: 24, frames: [0], spriteSheet: images },
 	shooterExplosion: { x: 105, y: 1, sWidth: 16, sHeight: 8, dWidth: 48, dHeight: 24, frames: [0, 1], spriteSheet: images },
 	spaceship: { x: 56, y: 1, sWidth: 16, sHeight: 8, dWidth: 48, dHeight: 24, frames: [0], spriteSheet: images },
+	spaceshipWhite: { x: 56, y: 10, sWidth: 16, sHeight: 8, dWidth: 48, dHeight: 24, frames: [0], spriteSheet: images },
 	spaceshipExplosion: { x: 122, y: 1, sWidth: 21, sHeight: 8, dWidth: 63, dHeight: 24, frames: [0], spriteSheet: images },
 }
 const worlConfig = {
@@ -52,6 +53,10 @@ let points = 0;
 let shooters = [];
 let livesCountText = null;
 let spaceship = null;
+let shields = [];
+let blankDots = [];
+let gameStarted = false;
+let highScore = 0;
 
 images.onload = () => {
 	///
@@ -81,14 +86,87 @@ function OnLoad() {
 	canvas = document.createElement('canvas');
 	document.body.insertBefore(canvas, document.body.firstChild);
 	BuildRAFPolyfill();
-	CreateWorld(worlConfig);
+	ShowStartPage(worlConfig);
 	display = new Display(canvas, world);
 	Resize(canvas, world);
 	AddEvents();
 	controller.setup(window);
-	Render();
+	//PauseGame(-1);
+	Run();
 }
-function CreateWorld(c) {
+function ShowStartPage(c) {
+	world = new World(0, 0, c.world.width, c.world.height);
+	const center = world.left + world.width * 2 / 4;
+
+	const t1 = new Text(world.left + world.width * 1 / 4, 10, 'SCORE', 'white', false, 24, 'Arial', true);
+	const t2 = new Text(world.left + world.width * 1 / 4, 40, '0000', 'white', false, 24, 'Arial', true);
+	const t3 = new Text(world.left + world.width * 3 / 4, 10, 'HI-SCORE', 'white', false, 24, 'Arial', true);
+	const t4 = new Text(world.left + world.width * 3 / 4, 40, highScore.toString().padStart(4, "0"), 'white', false, 24, 'Arial', true);
+	const t5 = new Text(center, 200, 'PLAY      ', 'white', false, 24, 'Arial', true);
+	const t6 = new Text(center, 260, 'SPACE        INVADERS', 'white', false, 24, 'Arial', true);
+	const t7 = new Text(center, 320, '*SCORE ADVANCE TABLE*', 'white', false, 24, 'Arial', true);
+	const t8 = new Text(center, 360, '=? MYSTERY', 'white', false, 24, 'Arial', true);
+	const t9 = new Text(center, 400, '= 30 POINTS', 'white', false, 24, 'Arial', true);
+	const t10 = new Text(center, 440, '= 20 POINTS', 'white', false, 24, 'Arial', true);
+	const t11 = new Text(center, 480, '= 10 POINTS', 'white', false, 24, 'Arial', true);
+	const t12 = new Text(center, 550, 'PRESS SPACE TO PLAY', 'white', false, 24, 'Arial', true);
+
+	world.objects.push(t1);
+	world.objects.push(t2);
+	world.objects.push(t3);
+	world.objects.push(t4);
+	world.objects.push(t5);
+	world.objects.push(t6);
+	world.objects.push(t7);
+	world.objects.push(t8);
+	world.objects.push(t9);
+	world.objects.push(t10);
+	world.objects.push(t11);
+	world.objects.push(t12);
+
+	let alianConfig = {
+		race: 'Squid',
+		x: center - 100,
+		y: 395,
+		width: 24,
+		height: 24,
+		sprite: sprites.squid,
+		frameCount: 1
+	};
+	const squid = new Alian(alianConfig);
+	world.objects.push(squid);
+
+	alianConfig = {
+		race: 'Crab',
+		x: center - 110,
+		y: 435,
+		width: 33,
+		sprite: sprites.crab,
+	};
+	const crab = new Alian(alianConfig);
+	world.objects.push(crab);
+
+	alianConfig = {
+		race: 'Octopus',
+		x: center - 115,
+		y: 475,
+		width: 36,
+		sprite: sprites.octopus,
+	};
+	const octopus = new Alian(alianConfig);
+	world.objects.push(octopus);
+
+	const spaceship = new Spaceship(center - 125, 355, 48, 24, 0, world.width, sprites.spaceshipWhite);
+	spaceship.enabled = true;
+	world.objects.push(spaceship);
+
+	game.objects.push(world);
+}
+function StartGame(c) {
+	lives = 3;
+	points = 0;
+	gameStarted = true;
+	gamePaused = false;
 	world = new World(0, 0, c.world.width, c.world.height);
 	wallBottom = new Wall(world.left, 694, world.width, 3, green, true);
 	shooter = new Shooter(world.left + (world.width - c.shooter.width) / 2, 629, c.shooter.width, c.shooter.height, sprites.shooter);
@@ -106,7 +184,7 @@ function CreateWorld(c) {
 			spaceshipExplosion.enabled = false;
 			spaceshipExplosion.Garbage = true;
 
-			const spaceshipPoints = new Text(spaceshipExplosion.left + spaceshipExplosion.width / 2, spaceshipExplosion.top, spaceship.point, 'red', true, 28, 'Arial', true);
+			const spaceshipPoints = new Text(spaceship.left + spaceship.width / 2, spaceshipExplosion.top, spaceship.point, 'red', true, 28, 'Arial', true);
 			world.objects.push(spaceshipPoints);
 			setTimeout(() => {
 				spaceshipPoints.enabled = false;
@@ -118,29 +196,28 @@ function CreateWorld(c) {
 	}
 	spaceship.ResetToReappear();
 
-	shooter.Explode =  (shooter) => {
-        shooter.enabled = false;
+	shooter.onExplode =  (shooter) => {
+		console.log('shooter.onExplode', lives)
 		shooterExplosion.x = shooter.x + (shooter.width - shooterExplosion.width) /2;
 		shooterExplosion.y = shooter.y;
 		shooterExplosion.lastFrameChangedTime = new Date().getTime();
 		shooterExplosion.frameIndex = 0;
 		shooterExplosion.animate = true;
-		shooterExplosion.animateEnded = () => {
+		shooterExplosion.onAnimateEnd = () => {
 			shooterExplosion.enabled = false;
-			shooter.x = 0;
-			shooter.y = 629;
-			shooter.enabled = true;
-			controller.ClearBuffer();
-
-			lives--;
-			UpdateLivesCountText();
-			if (lives > 0)
-				shooters.forEach((shooter, index) => shooter.enabled = index < lives - 1 );
-			else
-				alert('Game Over!');
-
+			if (lives > 0) {
+				shooter.x = 0;
+				shooter.y = 629;
+				shooter.enabled = true;
+			}
 		};
 		shooterExplosion.enabled = true;
+
+		lives--;
+		UpdateLivesCountText();
+		shooters.forEach((shooter, index) => shooter.enabled = index < lives - 1 );
+		if (lives === 0)
+			GameOver();
 	}
 	for (let sIndex = 0; sIndex < lives - 1; sIndex++) {
 		shooters[sIndex] = new Shooter(60  + sIndex * (c.shooter.width + 5), world.bottom - c.shooter.height - 2, c.shooter.width, c.shooter.height, sprites.greenShooter);
@@ -177,7 +254,7 @@ function CreateWorld(c) {
 				explosion.lastFrameChangedTime = new Date().getTime();
 				explosion.frameIndex = 0;
 				explosion.animate = true;
-					explosion.animateEnded = () => {
+					explosion.onAnimateEnd = () => {
 					setTimeout(() => {
 						explosion.enabled = false;
 						explosion.Garbage = true;
@@ -192,25 +269,24 @@ function CreateWorld(c) {
 	CreateAlians(alianConfig);
 	alianGrid.objects = alians;
 
-	topExplosion.animateEnded = () => {
+	topExplosion.onAnimateEnd = () => {
 		setTimeout(() => {
 			topExplosion.enabled = false;
 		}, 100);
 	};
-	shooterExplosion.animateEnded = () => {
+	shooterExplosion.onAnimateEnd = () => {
 		setTimeout(() => {
 			//shooterExplosion.enabled = false;
 		}, 100);
 	};
 
-	let blankDots = [];
     for (let i = 0; i < 20; i++) blankDots[i] = [];
 	blankDots[0] = [0, 1, 2, 3, 4, 5, 6, 8, 9, 12];
 	blankDots[4] = [0, 1, 2, 3, 5, 6, 7, 10, 11, 15];
 	blankDots[16] = [3,6,7,9,10,11,13,14,15];
 	blankDots[17] = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15];
 	blankDots[18] = [0,4,5,8,9,10,12,13,14];
-	let shields = [];
+	shields = [];
 	let shieldX = 114;
 	let shieldY = 550;
 	for (let shieldNo = 0; shieldNo <= 3; shieldNo++) {
@@ -221,7 +297,7 @@ function CreateWorld(c) {
 				const shieldBlockX = shieldX + c * 12;
 				const shieldBlockY = shieldY + r * 12;
 				const shieldBlock = new ShieldBlock(shieldBlockX, shieldBlockY, shields[shieldNo], r, c);
-				shields[shieldNo].objects[blockIndex++] = shieldBlock;
+				shields[shieldNo].objects[blockIndex] = shieldBlock;
 				world.objects.push(shieldBlock);
 
 				let dotIndex = 0;
@@ -234,7 +310,7 @@ function CreateWorld(c) {
 						world.objects.push(dot);
 					}
 				}
-				blankDots[blockIndex - 1].forEach((dotIndex)=>{
+				blankDots[blockIndex++].forEach((dotIndex) => {
 					shieldBlock.objects[dotIndex].enabled = false;
 				});
 			}
@@ -378,9 +454,9 @@ function ShootLaser() {
 
 let pauseEnabled = true;
 
-function Render() {
+function Run() {
 	//console.time('Render');
-	window.requestAnimationFrame(Render);
+	window.requestAnimationFrame(Run);
 
 	if (controller.isPressed('p')) {
 		if (pauseEnabled) {
@@ -396,33 +472,53 @@ function Render() {
 		}
 	}
 
-	if (!gamePaused) {
-		if (shooter.enabled) {
-			if (controller.isPressed('ArrowRight'))
-				shooter.moveRight();
-			if (controller.isPressed('ArrowLeft'))
-				shooter.moveLeft();
-			if (controller.isPressed('ArrowUp'))
-				shooter.y -= 4;
-			if (controller.isPressed('ArrowDown'))
-				shooter.y += 4;
+	if (gameStarted) {
+		if (!gamePaused) {
+			if (shooter.enabled) {
+				if (controller.isPressed('ArrowRight'))
+					shooter.moveRight();
+				if (controller.isPressed('ArrowLeft'))
+					shooter.moveLeft();
+				if (controller.isPressed('ArrowUp'))
+					shooter.y -= 4;
+				if (controller.isPressed('ArrowDown'))
+					shooter.y += 4;
+			}
+			if (controller.isPressed(' ')) {
+				console.log('s1')
+				ShootLaser();
+			}
 		}
-		if (controller.isPressed(' '))
-			ShootLaser();
+	} else {
+		if (controller.isPressed(' ')) {
+			controller.ClearBuffer();
+			console.log('Start Game!');
+			StartGame(worlConfig);
+		}
 	}
 
 	game.Update();
 
-	if (!gamePaused) {
+	if (gameStarted && !gamePaused) {
 
 		if (!alians.some(gObj => gObj.enabled)) {
 			world.objects.forEach((gObj) => {
 				//if (gObj instanceof AlianExplosion)
 					//gObj.enabled = false;
 			});
+
+			for (let index = world.objects.length - 1; index >= 0; index--) {
+				const gObj = world.objects[index];
+				if (gObj instanceof AlianShoot) {
+					gObj.enabled = false;
+					world.objects.splice(index, 1);
+				}
+			}
+
 			gamePaused = true;
 			setTimeout(() => {
 				gamePaused = false;
+				ResetShields();
 				SendNextAliansWave();	
 			}, 800);
 			
@@ -479,11 +575,26 @@ function Render() {
 		}
 	}
 
+	for (let index = world.objects.length - 1; index >= 0; index--) {
+		const gObj = world.objects[index];
+        if (gObj.Garbage)
+			world.objects.splice(index, 1);
+        else if (gameStarted && gObj.enabled) {
+			if (gObj instanceof AlianShoot && gObj.bottom > wallBottom.y)
+				gObj.Explode(wallBottom.y, ExplosionType.FlatBottom);
+			else if (gObj instanceof Alian && gObj.bottom > shooter.top && shooter.enabled) {
+				lives = 1;
+				shooter.Explode();
+			}
+		}
+	}
+	Render();
+	//console.timeEnd('Render');
+}
+function Render() {
 	display.clear();
-
 	//world.color = 'green'
 	display.drawBox(world);
-
 	world.objects.forEach(gObj => {
 		if (gObj.enabled) {
 			if (gObj instanceof Wall)
@@ -516,30 +627,7 @@ function Render() {
 				display.drawSprite(gObj);
 		}
 	});
-
-/*
-	const myFont = new FontFace('My Font', 'url(http://127.0.0.1:5500/PixelateRegular-Ygya.ttf)');
-
-	myFont.load().then((font) => {
-	  //document.fonts.add(font);
-	
-	  console.log('Font loaded');
-	}).catch((sss) => {
-		console.log(sss);
-	});
-*/
-
-	world.objects.forEach((gObj, index) => {
-        if (gObj.Garbage)
-			world.objects.splice(index, 1);
-        else if (gObj instanceof AlianShoot) {
-			if (gObj.bottom > wallBottom.y)
-				gObj.Explode(wallBottom.y, ExplosionType.FlatBottom);
-        }
-    });
-
 	display.render();
-	//console.timeEnd('Render');
 }
 function PauseGame(pa) {
 	gamePaused = true;
@@ -563,4 +651,44 @@ function IncreaseLive() {
 }
 function UpdateLivesCountText()  {
 	livesCountText.text = lives.toString();
+}
+function GameOver() {
+	PauseGame(3)
+	laserShoot.enabled = false;
+	for (let index = world.objects.length - 1; index >= 0; index--) {
+		const gObj = world.objects[index];
+        if (gObj instanceof AlianShoot) {
+			gObj.enabled = false;
+			world.objects.splice(index, 1);
+		}
+	}
+	
+	const gameOver = new Text(world.width / 2, 145, 'GAME OVER', 'white', true, 18, 'Arial', true);
+	world.objects.push(gameOver);
+	setTimeout(() => {
+		gameOver.enabled = false;
+		gameOver.Garbage = true;
+		gameStarted = false;
+		ShowStartPage(worlConfig);
+	}, 4000);
+}
+
+function ResetShields() {
+	world.objects.forEach(gObj => {
+		if (gObj instanceof ShieldBlock)
+			gObj.collidable = true;
+		if (gObj instanceof ShieldDot) {
+			gObj.collidable = false;
+			gObj.enabled = true;
+		}
+	});
+
+	for (let shieldNo = 0; shieldNo <= 3; shieldNo++) {
+		for (let blockIndex = 0; blockIndex < 20; blockIndex++) {
+			const shieldBlock = shields[shieldNo].objects[blockIndex];
+			blankDots[blockIndex].forEach((dotIndex) => {
+				shieldBlock.objects[dotIndex].enabled = false;
+			});
+		}
+	}
 }
