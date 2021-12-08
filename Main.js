@@ -3,7 +3,7 @@ import { Display } from './Display.js';
 import { Controller } from './Controller.js';
 
 export const ExplosionType = {Round: 1, FlatBottom: 2};
-const green = '#00B098';
+const green = '#69C42B';	//#00B098
 let canvas;
 const game = new Game();
 const controller = new Controller();
@@ -25,7 +25,7 @@ const firstWaveY = 164;
 const waveStartX = 92;
 const waveAdvance = 72;
 const alianDefalutXV = 10;
-var images = new Image();
+const images = new Image();
 const sprites = {
 	squid: { x: 22, y: 1, sWidth: 8, sHeight: 8, dWidth: 24, dHeight: 24, frames: [0, 1], spriteSheet: images },
 	crab: { x: 31, y: 1, sWidth: 11, sHeight: 8, dWidth: 33, dHeight: 24, frames: [0, 1], spriteSheet: images },
@@ -57,11 +57,15 @@ let shields = [];
 let blankDots = [];
 let gameStarted = false;
 let highScore = 0;
+let press2layBlinkingTimer = 0;
 
 images.onload = () => {
 	///
 }
 images.src = 'Sprites.png';
+
+let background = new Image();
+background.src = 'Background.png';
 
 window.addEventListener('load', () => OnLoad());
 
@@ -111,18 +115,8 @@ function ShowStartPage(c) {
 	const t11 = new Text(center, 480, '= 10 POINTS', 'white', false, 24, 'Arial', true);
 	const t12 = new Text(center, 550, 'PRESS SPACE TO PLAY', 'white', false, 24, 'Arial', true);
 
-	world.objects.push(t1);
-	world.objects.push(t2);
-	world.objects.push(t3);
-	world.objects.push(t4);
-	world.objects.push(t5);
-	world.objects.push(t6);
-	world.objects.push(t7);
-	world.objects.push(t8);
-	world.objects.push(t9);
-	world.objects.push(t10);
-	world.objects.push(t11);
-	world.objects.push(t12);
+	const spaceship = new Spaceship(center - 125, 355, 48, 24, 0, world.width, sprites.spaceshipWhite);
+	spaceship.enabled = true;
 
 	let alianConfig = {
 		race: 'Squid',
@@ -134,7 +128,6 @@ function ShowStartPage(c) {
 		frameCount: 1
 	};
 	const squid = new Alian(alianConfig);
-	world.objects.push(squid);
 
 	alianConfig = {
 		race: 'Crab',
@@ -144,7 +137,6 @@ function ShowStartPage(c) {
 		sprite: sprites.crab,
 	};
 	const crab = new Alian(alianConfig);
-	world.objects.push(crab);
 
 	alianConfig = {
 		race: 'Octopus',
@@ -154,13 +146,30 @@ function ShowStartPage(c) {
 		sprite: sprites.octopus,
 	};
 	const octopus = new Alian(alianConfig);
-	world.objects.push(octopus);
-
-	const spaceship = new Spaceship(center - 125, 355, 48, 24, 0, world.width, sprites.spaceshipWhite);
-	spaceship.enabled = true;
+	
+	world.objects.push(t1);
+	world.objects.push(t2);
+	world.objects.push(t3);
+	world.objects.push(t4);
+	world.objects.push(t5);
+	world.objects.push(t6);
+	world.objects.push(t7);
+	world.objects.push(t8);
 	world.objects.push(spaceship);
+	world.objects.push(t9);
+	world.objects.push(squid);
+	world.objects.push(t10);
+	world.objects.push(crab);
+	world.objects.push(t11);
+	world.objects.push(octopus);
+	world.objects.push(t12);
 
 	game.objects.push(world);
+
+	press2layBlinkingTimer = setInterval(() => {
+		t12.enabled = !t12.enabled;
+	}, 700);
+
 }
 function StartGame(c) {
 	lives = 3;
@@ -493,7 +502,14 @@ function Run() {
 		if (controller.isPressed(' ')) {
 			controller.ClearBuffer();
 			console.log('Start Game!');
-			StartGame(worlConfig);
+			clearInterval(press2layBlinkingTimer);
+			
+			PopObjectFromWorld(()=> {
+				setTimeout(() => {
+					StartGame(worlConfig)
+				}, 700);
+			});
+
 		}
 	}
 
@@ -595,6 +611,9 @@ function Render() {
 	display.clear();
 	//world.color = 'green'
 	display.drawBox(world);
+
+	display.buffer.drawImage(background, 0, 0, 755, 572, -60, 0, 755, 695);
+
 	world.objects.forEach(gObj => {
 		if (gObj.enabled) {
 			if (gObj instanceof Wall)
@@ -691,4 +710,13 @@ function ResetShields() {
 			});
 		}
 	}
+}
+function PopObjectFromWorld(callback) {
+	world.objects.pop();
+	if (world.objects.length > 0)
+		setTimeout(()=> {
+			PopObjectFromWorld(callback);
+		}, 40)
+	else
+		callback();
 }
