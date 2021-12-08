@@ -58,6 +58,12 @@ let blankDots = [];
 let gameStarted = false;
 let highScore = 0;
 let press2layBlinkingTimer = 0;
+let gameData = { HighScore: 0 } ;
+
+let scoreTitle;
+let scoreText;
+let hightScoreTitle;
+let hightScoreText;
 
 images.onload = () => {
 	///
@@ -86,7 +92,11 @@ function OnLoad() {
 	// breakpoint on attribute
 	//debug
 	*/
-
+	if (localStorage.getItem('gameData') !== null) {
+		gameData = JSON.parse(localStorage.getItem('gameData'));
+		highScore = gameData.HighScore;
+	}
+	
 	canvas = document.createElement('canvas');
 	document.body.insertBefore(canvas, document.body.firstChild);
 	BuildRAFPolyfill();
@@ -177,12 +187,18 @@ function StartGame(c) {
 	gameStarted = true;
 	gamePaused = false;
 	world = new World(0, 0, c.world.width, c.world.height);
+
+	scoreTitle = new Text(world.left + world.width * 1 / 4, 10, 'SCORE', 'white', false, 24, 'Arial', true);
+	scoreText = new Text(world.left + world.width * 1 / 4, 40, '0000', 'white', false, 24, 'Arial', true);
+	hightScoreTitle = new Text(world.left + world.width * 3 / 4, 10, 'HI-SCORE', 'white', false, 24, 'Arial', true);
+	hightScoreText = new Text(world.left + world.width * 3 / 4, 40, highScore.toString().padStart(4, "0"), 'white', false, 24, 'Arial', true);
+
 	wallBottom = new Wall(world.left, 694, world.width, 3, green, true);
 	shooter = new Shooter(world.left + (world.width - c.shooter.width) / 2, 629, c.shooter.width, c.shooter.height, sprites.shooter);
 	laserShoot = new LaserShoot(0, 0, c.laserShoot.width, c.laserShoot.height, 'white');
 	topExplosion = new TopExplosion(0, 83, 22, 26, sprites.topExplosion);
 	shooterExplosion = new ShooterExplosion(world.left + (world.width - c.shooter.width) / 2, 629, 48, 24, sprites.shooterExplosion);
-	p1Score = new Text(world.left + world.width * 1 / 4, 10, 'SCORE: 0', 'white', true, 24, 'Arial', true);
+	//p1Score = new Text(world.left + world.width * 1 / 4, 10, 'SCORE: 0', 'white', true, 24, 'Arial', true);
 	livesCountText = new Text(25, world.height - 30, lives, green, true, 32, 'Arial', true);
 	spaceship = new Spaceship(0, firstWaveY - 2 * 24, 48, 24, 100, world.width, sprites.spaceship);
 	spaceship.onExplode = (ashoot, impactTop) => {
@@ -327,13 +343,18 @@ function StartGame(c) {
 		shieldX += 60 +  67;
 	}
 
+
+	world.objects.push(scoreTitle);
+	world.objects.push(scoreText);
+	world.objects.push(hightScoreTitle);
+	world.objects.push(hightScoreText);
 	world.objects.push(alianGrid);
 	world.objects.push(wallBottom);
 	world.objects.push(shooter);
 	world.objects.push(laserShoot);
 	world.objects.push(topExplosion);
 	world.objects.push(shooterExplosion);
-	world.objects.push(p1Score);
+	//world.objects.push(p1Score);
 	world.objects.push(livesCountText);
 	world.objects.push(spaceship);
 	game.objects.push(world);
@@ -428,7 +449,14 @@ function UpdatePoints(point) {
 	points += point;
 	if (parseInt(points / 1000) !== pBak)
 		IncreaseLive();
-	p1Score.text = 'SCORE: ' + points;
+	//p1Score.text = 'SCORE: ' + points;
+	scoreText.text = points;
+	if (points > highScore) {
+		highScore = points;
+		hightScoreText.text = highScore;
+		gameData.HighScore = highScore;
+		localStorage.setItem('gameData', JSON.stringify(gameData));
+	}
 }
 function BuildRAFPolyfill() {
 	window.requestAnimationFrame =
@@ -682,6 +710,9 @@ function GameOver() {
 		}
 	}
 	
+	gameData.HighScore = highScore;
+	localStorage.setItem('gameData', JSON.stringify(gameData));
+
 	const gameOver = new Text(world.width / 2, 145, 'GAME OVER', 'white', true, 18, 'Arial', true);
 	world.objects.push(gameOver);
 	setTimeout(() => {
