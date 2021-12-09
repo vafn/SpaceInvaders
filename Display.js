@@ -29,7 +29,8 @@ export const Display = function(canvas, world) {
   };
   this.drawSprite  = function(obj) {
     const sprite = obj.sprite;
-    let sY = sprite.y + obj.frameIndex * (sprite.sHeight + 1);
+    //let sY = sprite.y + obj.frameIndex * (sprite.sHeight + 1);
+    let sY = sprite.y + sprite.frames[obj.frameIndex] * (sprite.sHeight + 1);
     this.buffer.drawImage(sprite.spriteSheet, sprite.x, sY, sprite.sWidth, sprite.sHeight, Math.round(obj.x), Math.round(obj.y), sprite.dWidth, sprite.dHeight);
   };
 

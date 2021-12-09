@@ -1,4 +1,4 @@
-import { Game, World, Wall, Text, Shooter, Alian, LaserShoot, TopExplosion, AlianGrid, AlianShoot, Explosion, AlianExplosion, Shield, ShieldBlock, ShieldDot, ShooterExplosion, Spaceship, SpaceshipExplosion } from './Game.js';
+import { Game, World, Wall, Text, Shooter, Alien, LaserShoot, TopExplosion, AlienGrid, AlienShoot, Explosion, AlienExplosion, Shield, ShieldBlock, ShieldDot, ShooterExplosion, Spaceship, SpaceshipExplosion, ExplosionFragment } from './Game.js';
 import { Display } from './Display.js';
 import { Controller } from './Controller.js';
 
@@ -16,7 +16,7 @@ let topExplosion = null;
 let shooterExplosion = null;
 let p1Score = null;
 let gamePaused = false;
-const alians = [];
+let  aliens = [];
 const evtDispatcher = new EventTarget();
 let docWidth = 0;
 let docHeight = 0;
@@ -24,7 +24,7 @@ let waveNo = 1;
 const firstWaveY = 164;
 const waveStartX = 92;
 const waveAdvance = 72;
-const alianDefalutXV = 10;
+const alienDefalutXV = 10;
 const images = new Image();
 const sprites = {
 	squid: { x: 22, y: 1, sWidth: 8, sHeight: 8, dWidth: 24, dHeight: 24, frames: [0, 1], spriteSheet: images },
@@ -34,20 +34,23 @@ const sprites = {
 	greenShooter: { x: 1, y: 10, sWidth: 13, sHeight: 8, dWidth: 39, dHeight: 24, frames: [0], spriteSheet: images },
 	topExplosion: { x: 73, y: 1, sWidth: 8, sHeight: 8, dWidth: 24, dHeight: 24, frames: [0, 1], spriteSheet: images },
 	explosion: { x: 82, y: 1, sWidth: 8, sHeight: 8, dWidth: 24, dHeight: 24, frames: [0, 1], spriteSheet: images },
-	alianExplosion: { x: 91, y: 1, sWidth: 13, sHeight: 8, dWidth: 39, dHeight: 24, frames: [0], spriteSheet: images },
+	alienExplosion: { x: 91, y: 1, sWidth: 13, sHeight: 8, dWidth: 39, dHeight: 24, frames: [0], spriteSheet: images },
 	shooterExplosion: { x: 105, y: 1, sWidth: 16, sHeight: 8, dWidth: 48, dHeight: 24, frames: [0, 1], spriteSheet: images },
 	spaceship: { x: 56, y: 1, sWidth: 16, sHeight: 8, dWidth: 48, dHeight: 24, frames: [0], spriteSheet: images },
 	spaceshipWhite: { x: 56, y: 10, sWidth: 16, sHeight: 8, dWidth: 48, dHeight: 24, frames: [0], spriteSheet: images },
 	spaceshipExplosion: { x: 122, y: 1, sWidth: 21, sHeight: 8, dWidth: 63, dHeight: 24, frames: [0], spriteSheet: images },
+	alienShoot1: { x: 144, y: 1, sWidth: 3, sHeight: 7, dWidth: 9, dHeight: 21, frames: [0, 1, 2, 3], spriteSheet: images },
+	alienShoot2: { x: 148, y: 1, sWidth: 3, sHeight: 7, dWidth: 9, dHeight: 21, frames: [0, 1, 2, 3], spriteSheet: images },
+	alienShoot3: { x: 152, y: 1, sWidth: 3, sHeight: 7, dWidth: 9, dHeight: 21, frames: [0, 1, 2, 3, 4], spriteSheet: images }
 }
 const worlConfig = {
 	world: { width: 669, height: 727 },
 	shooter: { width: 39, height: 24 },
 	laserShoot: { width: 3, height: 24, color: 'white' },
-	alianShoot: { width: 3, height: 24, color: 'white' }
+	alienShoot: { width: 3, height: 24, color: 'white' }
 };
-let liveAlians = 0;
-let alianGrid = new AlianGrid(5, 11);
+let liveAliens = 0;
+let alienGrid = new AlienGrid(5, 11);
 let lives = 3;
 let points = 0;
 let shooters = [];
@@ -77,9 +80,9 @@ window.addEventListener('load', () => OnLoad());
 
 document.addEventListener('visibilitychange', (event) => {
     if (document.hidden)
-		PauseGame(0);
+		PauseGame();
     //else
-		//PlayGame(0);
+		//PlayGame();
 });
 
 function OnLoad() {
@@ -96,7 +99,7 @@ function OnLoad() {
 		gameData = JSON.parse(localStorage.getItem('gameData'));
 		highScore = gameData.HighScore;
 	}
-	
+
 	canvas = document.createElement('canvas');
 	document.body.insertBefore(canvas, document.body.firstChild);
 	BuildRAFPolyfill();
@@ -105,10 +108,10 @@ function OnLoad() {
 	Resize(canvas, world);
 	AddEvents();
 	controller.setup(window);
-	//PauseGame(-1);
 	Run();
 }
 function ShowStartPage(c) {
+	game.objects = [];
 	world = new World(0, 0, c.world.width, c.world.height);
 	const center = world.left + world.width * 2 / 4;
 
@@ -128,7 +131,7 @@ function ShowStartPage(c) {
 	const spaceship = new Spaceship(center - 125, 355, 48, 24, 0, world.width, sprites.spaceshipWhite);
 	spaceship.enabled = true;
 
-	let alianConfig = {
+	let alienConfig = {
 		race: 'Squid',
 		x: center - 100,
 		y: 395,
@@ -137,25 +140,25 @@ function ShowStartPage(c) {
 		sprite: sprites.squid,
 		frameCount: 1
 	};
-	const squid = new Alian(alianConfig);
+	const squid = new Alien(alienConfig);
 
-	alianConfig = {
+	alienConfig = {
 		race: 'Crab',
 		x: center - 110,
 		y: 435,
 		width: 33,
 		sprite: sprites.crab,
 	};
-	const crab = new Alian(alianConfig);
+	const crab = new Alien(alienConfig);
 
-	alianConfig = {
+	alienConfig = {
 		race: 'Octopus',
 		x: center - 115,
 		y: 475,
 		width: 36,
 		sprite: sprites.octopus,
 	};
-	const octopus = new Alian(alianConfig);
+	const octopus = new Alien(alienConfig);
 	
 	world.objects.push(t1);
 	world.objects.push(t2);
@@ -182,6 +185,11 @@ function ShowStartPage(c) {
 
 }
 function StartGame(c) {
+	alienGrid.Reset();
+	waveNo = 1;
+	game.objects = [];
+	aliens = [];
+	shooters = [];
 	lives = 3;
 	points = 0;
 	gameStarted = true;
@@ -222,7 +230,6 @@ function StartGame(c) {
 	spaceship.ResetToReappear();
 
 	shooter.onExplode =  (shooter) => {
-		console.log('shooter.onExplode', lives)
 		shooterExplosion.x = shooter.x + (shooter.width - shooterExplosion.width) /2;
 		shooterExplosion.y = shooter.y;
 		shooterExplosion.lastFrameChangedTime = new Date().getTime();
@@ -251,25 +258,46 @@ function StartGame(c) {
 	
 	world.dispatcher = evtDispatcher;
 
-	let alianConfig = {
+	let alienConfig = {
 		index: 0,
-		type: 'Alian',
+		type: 'Alien',
 		race: 'Squid',
 		x: waveStartX + (32 - 22) / 2,
 		y: firstWaveY,
 		width: 24,
 		height: 24,
-		xV: alianDefalutXV,
+		xV: alienDefalutXV,
 		yV: 0,
 		dispatcher: evtDispatcher,
 		sprite: sprites.squid,
 		frameCount: 2,
 		framePerSec: 1.3,
-		grid: alianGrid,
+		grid: alienGrid,
 		point: 30,
-		Shoot: (alian) => {
-			const aShoot = new AlianShoot(alian.left + (alian.width / 2) - c.alianShoot.width / 2, alian.y + alian.height, c.alianShoot.width, c.alianShoot.height, c.alianShoot.color);
-			aShoot.onExplode = (ashoot, impactTop, explosionType) => {
+		Shoot: (alien) => {
+			let shootModel = Math.floor(1 + Math.random() * 3);
+			let sprite;
+			if (shootModel === 1)
+				sprite = sprites.alienShoot1
+			else if (shootModel === 2)
+				sprite = sprites.alienShoot2
+			else if (shootModel === 3)
+				sprite = sprites.alienShoot3
+			const aShoot = new AlienShoot(alien.left + (alien.width / 2) - c.alienShoot.width / 2, alien.y + alien.height, shootModel, sprite);
+			if (shootModel === 1) {
+				aShoot.frameCount = 4;
+				aShoot.framePerSec = 20;
+				//aShoot.yV = 50;
+			} else if (shootModel === 2) {
+				aShoot.frameCount = 4;
+				aShoot.framePerSec = 20;
+				//aShoot.yV = 50;
+			} else if (shootModel === 3) {
+				aShoot.frameCount = 5;
+				aShoot.framePerSec = 20;
+				//aShoot.yV = 50;
+			}
+		aShoot.onExplode = (ashoot, impactTop, explosionType) => {
 				let explosion;
 				if (explosionType === ExplosionType.FlatBottom)
 					explosion = new Explosion(ashoot.left + ashoot.width / 2 - 22 / 2, impactTop - 22, 24, 24, sprites.explosion);
@@ -288,11 +316,10 @@ function StartGame(c) {
 				world.objects.push(explosion);
 			}
 			world.objects.push(aShoot);
-			//PauseGame(2);
 		}
 	};
-	CreateAlians(alianConfig);
-	alianGrid.objects = alians;
+	CreateAliens(alienConfig);
+	alienGrid.objects = aliens;
 
 	topExplosion.onAnimateEnd = () => {
 		setTimeout(() => {
@@ -341,14 +368,24 @@ function StartGame(c) {
 			}
 		}
 		shieldX += 60 +  67;
+		shields[shieldNo].onAddExplosionFragment = (x,y) => {
+			//let c = (3 + Math.floor(Math.random() * 13)).toString(16);
+			//let color = `#69${c}${c}2B`
+			const explosionFragment = new ExplosionFragment(x, y, green);
+			setTimeout(() => {
+				explosionFragment.enabled = false;
+				explosionFragment.Garbage = true;
+			}, 150 + Math.floor(Math.random() * 50));
+			
+			world.objects.push(explosionFragment);
+		}
 	}
-
 
 	world.objects.push(scoreTitle);
 	world.objects.push(scoreText);
 	world.objects.push(hightScoreTitle);
 	world.objects.push(hightScoreText);
-	world.objects.push(alianGrid);
+	world.objects.push(alienGrid);
 	world.objects.push(wallBottom);
 	world.objects.push(shooter);
 	world.objects.push(laserShoot);
@@ -358,78 +395,82 @@ function StartGame(c) {
 	world.objects.push(livesCountText);
 	world.objects.push(spaceship);
 	game.objects.push(world);
+
+	PlayGame();
+
+	console.log(shooters)
 }
-function CreateAlians(config) {
-	AddAlianRow(config);
+function CreateAliens(config) {
+	AddAlienRow(config);
 	config.x = waveStartX;
 	config.race = 'Crab';
 	config.sprite = sprites.crab;
 	config.width = 32;
 	config.y += 48;
 	config.point = 20;
-	AddAlianRow(config);
+	AddAlienRow(config);
 	config.y += 48;
-	AddAlianRow(config);
+	AddAlienRow(config);
 	config.race = 'Octopus';
 	config.sprite = sprites.octopus;
 	config.width = 36;
 	config.y += 48;
 	config.point = 10;
-	AddAlianRow(config);
+	AddAlienRow(config);
 	config.y += 48;
-	AddAlianRow(config);
-	liveAlians = alians.length;
+	AddAlienRow(config);
+	liveAliens = aliens.length;
 }
-function AddAlianRow(config) {
+function AddAlienRow(config) {
 	let xBak = config.x;
 	for (let index = 0; index < 11; index++) {
-		const alian = new Alian(config);
-		alian.onExplode = (alian) => {
-			const x = alian.left + alian.width / 2 - 39 / 2;
-			const y = alian.top + alian.height / 2 - 24 / 2;
-			const alianExplosion = new AlianExplosion(x, y, 39, 24, sprites.alianExplosion);
-			alianExplosion.animate = false;
-			alianExplosion.xV = alian.xV;
+		const alien = new Alien(config);
+		alien.onExplode = (alien) => {
+			const x = alien.left + alien.width / 2 - 39 / 2;
+			const y = alien.top + alien.height / 2 - 24 / 2;
+			const alienExplosion = new AlienExplosion(x, y, 39, 24, sprites.alienExplosion);
+			alienExplosion.animate = false;
+			alienExplosion.xV = alien.xV;
 			setTimeout(() => {
-				alianExplosion.enabled = false
-				alianExplosion.Garbage = true;
+				alienExplosion.enabled = false
+				alienExplosion.Garbage = true;
 			}, 200);
-			world.objects.push(alianExplosion);
+			world.objects.push(alienExplosion);
 		}
-		world.objects.push(alian);
-		alians.push(alian);
+		world.objects.push(alien);
+		aliens.push(alien);
 		config.x += 36 + 9;
 		config.index++;
 	}
 	config.x = xBak;
 }
-function SendNextAliansWave() {
+function SendNextAliensWave() {
 	waveNo++;
 	let now = new Date().getTime();
 	for (let row = 0; row < 5; row++)
 		for (let col = 0; col < 11; col++) {
-			let alian = alians[row * 11 + col];
-			alian.framePerSec = 1.3;
-			alian.y = firstWaveY + waveAdvance * (waveNo - 1) + row * 48;
-			alian.x = col * (36 + 12);
-			alian.xV = alianDefalutXV;
-			alian.lastUpdate = now;
-			alian.enabled = true;
+			let alien = aliens[row * 11 + col];
+			alien.framePerSec = 1.3;
+			alien.y = firstWaveY + waveAdvance * (waveNo - 1) + row * 48;
+			alien.x = col * (36 + 12);
+			alien.xV = alienDefalutXV;
+			alien.lastUpdate = now;
+			alien.enabled = true;
 		}
-	liveAlians = alians.length;
-	alianGrid.Reset();
+	liveAliens = aliens.length;
+	alienGrid.Reset();
 }
 function AddEvents() {
 	window.addEventListener('resize', () => Resize(canvas, world));
-	evtDispatcher.addEventListener('AnAlianKilled', (event) => {
+	evtDispatcher.addEventListener('AnAlienKilled', (event) => {
 		UpdatePoints(event.detail.point);
-		alianGrid.SetAlianKilled(event.detail.alianIndex);
-		const speed = --liveAlians > 0 ? Math.sign(alians[0].xV) * (0.8 + 450 / liveAlians ** 0.9705) : 0;
-		alians.forEach((alian) => {
-			alian.xV = speed;
-			alian.framePerSec *= 1.05;
+		alienGrid.SetAlienKilled(event.detail.alienIndex);
+		const speed = --liveAliens > 0 ? Math.sign(aliens[0].xV) * (0.8 + 450 / liveAliens ** 0.9705) : 0;
+		aliens.forEach((alien) => {
+			alien.xV = speed;
+			alien.framePerSec *= 1.05;
 		});
-		alianGrid.shootInterval = 1000 - 500 * (55 - liveAlians) / 54;
+		alienGrid.shootInterval = 1000 - 500 * (55 - liveAliens) / 54;
 	});
 }
 function Resize(canvas, world) {
@@ -498,9 +539,9 @@ function Run() {
 	if (controller.isPressed('p')) {
 		if (pauseEnabled) {
 			if (gamePaused)
-				PlayGame(1);
+				PlayGame();
 			else
-				PauseGame(1);
+				PauseGame();
 
 			pauseEnabled = false;
 			setTimeout(() => {
@@ -521,15 +562,12 @@ function Run() {
 				if (controller.isPressed('ArrowDown'))
 					shooter.y += 4;
 			}
-			if (controller.isPressed(' ')) {
-				console.log('s1')
+			if (controller.isPressed(' '))
 				ShootLaser();
-			}
 		}
 	} else {
 		if (controller.isPressed(' ')) {
 			controller.ClearBuffer();
-			console.log('Start Game!');
 			clearInterval(press2layBlinkingTimer);
 			
 			PopObjectFromWorld(()=> {
@@ -545,15 +583,15 @@ function Run() {
 
 	if (gameStarted && !gamePaused) {
 
-		if (!alians.some(gObj => gObj.enabled)) {
+		if (!aliens.some(gObj => gObj.enabled)) {
 			world.objects.forEach((gObj) => {
-				//if (gObj instanceof AlianExplosion)
+				//if (gObj instanceof AlienExplosion)
 					//gObj.enabled = false;
 			});
 
 			for (let index = world.objects.length - 1; index >= 0; index--) {
 				const gObj = world.objects[index];
-				if (gObj instanceof AlianShoot) {
+				if (gObj instanceof AlienShoot) {
 					gObj.enabled = false;
 					world.objects.splice(index, 1);
 				}
@@ -563,7 +601,7 @@ function Run() {
 			setTimeout(() => {
 				gamePaused = false;
 				ResetShields();
-				SendNextAliansWave();	
+				SendNextAliensWave();	
 			}, 800);
 			
 		}
@@ -571,7 +609,7 @@ function Run() {
 		let distToRight = 10000;
 		let distToLeft = 10000;
 		
-		alians.forEach(gObj => {
+		aliens.forEach(gObj => {
 			if (gObj.enabled) {
 				if (world.right - gObj.right < distToRight)
 					distToRight = world.right - gObj.right;
@@ -581,18 +619,18 @@ function Run() {
 		});
 
 		if (distToLeft < 0 || distToRight < 0) {
-			alians.forEach(alian => {
-				alian.xV = -alian.xV;
-				alian.y += alian.height;
+			aliens.forEach(alien => {
+				alien.xV = -alien.xV;
+				alien.y += alien.height;
 				if (distToRight < 0)
-					alian.x += distToRight;
+					alien.x += distToRight;
 				else if (distToLeft < 0)
-					alian.x -= distToLeft;
+					alien.x -= distToLeft;
 			});
 
 			world.objects.forEach(gObj => {
 				if (gObj.enabled) {
-					if (gObj instanceof AlianExplosion){
+					if (gObj instanceof AlienExplosion){
 						gObj.xV = -gObj.xV;
 						gObj.y += gObj.height * 0.2;
 					}
@@ -624,9 +662,9 @@ function Run() {
         if (gObj.Garbage)
 			world.objects.splice(index, 1);
         else if (gameStarted && gObj.enabled) {
-			if (gObj instanceof AlianShoot && gObj.bottom > wallBottom.y)
+			if (gObj instanceof AlienShoot && gObj.bottom > wallBottom.y)
 				gObj.Explode(wallBottom.y, ExplosionType.FlatBottom);
-			else if (gObj instanceof Alian && gObj.bottom > shooter.top && shooter.enabled) {
+			else if (gObj instanceof Alien && gObj.bottom > shooter.top && shooter.enabled) {
 				lives = 1;
 				shooter.Explode();
 			}
@@ -650,41 +688,39 @@ function Render() {
 				display.drawText(gObj);
 			else if (gObj instanceof Shooter)
 				display.drawSprite(gObj);
-			else if (gObj instanceof Alian)
+			else if (gObj instanceof Alien)
 				display.drawSprite(gObj);
 			else if (gObj instanceof TopExplosion)
 				display.drawSprite(gObj);
 			else if (gObj instanceof LaserShoot)
 				display.drawBox(gObj);
-			else if (gObj instanceof AlianShoot)
-				display.drawBox(gObj);
+			else if (gObj instanceof AlienShoot)
+				display.drawSprite(gObj);
 			else if (gObj instanceof Explosion)
 				display.drawSprite(gObj);
-			else if (gObj instanceof AlianExplosion)
+			else if (gObj instanceof AlienExplosion)
 				display.drawSprite(gObj);
 			else if (gObj instanceof ShieldDot)
 				display.drawBox(gObj);
-			else if (gObj instanceof Shield)
-				display.drawRectangle(gObj);
 			else if (gObj instanceof ShooterExplosion)
 				display.drawSprite(gObj);
 			else if (gObj instanceof Spaceship)
 				display.drawSprite(gObj);
 			else if (gObj instanceof SpaceshipExplosion)
 				display.drawSprite(gObj);
+			else if (gObj instanceof ExplosionFragment)
+				display.drawBox(gObj);
 		}
 	});
 	display.render();
 }
-function PauseGame(pa) {
+function PauseGame() {
 	gamePaused = true;
 	world.objects.forEach((gObj, index) => gObj.SetPause(gamePaused));
-	console.log('Paused: ' + pa);
 }
-function PlayGame(pa) {
+function PlayGame() {
 	gamePaused = false;
 	world.objects.forEach((gObj, index) => gObj.SetPause(gamePaused));
-	console.log('Resummed: ' + pa);
 }
 function IncreaseLive() {
 	lives++;
@@ -700,11 +736,11 @@ function UpdateLivesCountText()  {
 	livesCountText.text = lives.toString();
 }
 function GameOver() {
-	PauseGame(3)
+	PauseGame()
 	laserShoot.enabled = false;
 	for (let index = world.objects.length - 1; index >= 0; index--) {
 		const gObj = world.objects[index];
-        if (gObj instanceof AlianShoot) {
+        if (gObj instanceof AlienShoot) {
 			gObj.enabled = false;
 			world.objects.splice(index, 1);
 		}

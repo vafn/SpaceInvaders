@@ -204,7 +204,7 @@ export class Shooter extends Rectangle {
         this.onExplode(this);
     }
 }
-export class Alian extends Rectangle {
+export class Alien extends Rectangle {
     constructor(config) {
         super();
         this._x = 0;
@@ -218,7 +218,7 @@ export class Alian extends Rectangle {
         this.xV = 0;
         this.yV = 0;
         this.conceded = false;
-        this.type = 'Alian';
+        this.type = 'Alien';
         this.race = 'Squid';
         this.wentOut;
         this.shoot;
@@ -288,8 +288,8 @@ export class Alian extends Rectangle {
                     if (destObj.type === 'Shooter') {
                         this.Explode();
                         this.dispatcher.dispatchEvent(
-                            new CustomEvent('AnAlianKilled', { detail: {
-                                alianIndex: this.index,
+                            new CustomEvent('AnAlienKilled', { detail: {
+                                alienIndex: this.index,
                                 point: this.point
                             }})
                         );
@@ -358,12 +358,12 @@ export class LaserShoot extends Rectangle {
                     if (destObj.type === 'ShieldBlock') 
                         for (let d=0; d < destObj.objects.length; d++)
                             destObj.objects[d].collidable = true;
-                    if (destObj.type === 'Alian') {
+                    if (destObj.type === 'Alien') {
                         this.enabled = false;
                         destObj.Explode();
                         destObj.dispatcher.dispatchEvent(
-                            new CustomEvent('AnAlianKilled', { detail: {
-                                alianIndex: destObj.index,
+                            new CustomEvent('AnAlienKilled', { detail: {
+                                alienIndex: destObj.index,
                                 point: destObj.point
                             }})
                         );
@@ -371,7 +371,7 @@ export class LaserShoot extends Rectangle {
                         this.enabled = false;
                         this.yV = 0;
                         destObj.parent.CollisionAt(destObj.row, destObj.col);
-                    } else if (destObj.type === 'AlianShoot') {
+                    } else if (destObj.type === 'AlienShoot') {
                         this.enabled = false;
                         destObj.Explode(this.top, ExplosionType.Round);
                     } else if (destObj.type === 'Spaceship') {
@@ -411,18 +411,18 @@ export class TopExplosion extends Rectangle {
         this.UpdateSprite();
     }
 }
-export class AlianGrid extends Rectangle {
+export class AlienGrid extends Rectangle {
         constructor(rows, cols) {
         super();
         this.movable = false;
         this.collidable = false;
-        this.type = 'AlianGrid';
+        this.type = 'AlienGrid';
         this.lastTry2Shoot = new Date().getTime();
         this.shootInterval = 1000;
         
         this.rows = rows;
         this.cols = cols;
-        this.alians = [];
+        this.aliens = [];
         this.Reset();
     }
     Reset() {
@@ -430,17 +430,17 @@ export class AlianGrid extends Rectangle {
         this.lastTry2Shoot = new Date().getTime();
         for (let c = 0; c < this.cols; c++)
             for (let r = 0; r < this.rows; r++)
-                this.alians[c * this.rows + r] = 1;
+                this.aliens[c * this.rows + r] = 1;
     }
-    CanFire(alian) {
+    CanFire(alien) {
         let result = true;
-        if (alian.enabled) {
-            const alianIndex = alian.index;
-            let aRow = parseInt(alianIndex / this.cols);
+        if (alien.enabled) {
+            const alienIndex = alien.index;
+            let aRow = parseInt(alienIndex / this.cols);
             if (aRow < this.rows - 1) {
-                let aCol = alianIndex % this.cols;
+                let aCol = alienIndex % this.cols;
                 for (let r = aRow + 1; r < this.rows; r++) {
-                    if (this.alians[r * this.cols + aCol] > 0) {
+                    if (this.aliens[r * this.cols + aCol] > 0) {
                         result = false;
                         break;
                     }
@@ -450,8 +450,8 @@ export class AlianGrid extends Rectangle {
             result = false;
         return result;
     }
-    SetAlianKilled(alianIndex) {
-        this.alians[alianIndex] = 0;
+    SetAlienKilled(alienIndex) {
+        this.aliens[alienIndex] = 0;
     }
     Update() {
         if (this.enabled) {
@@ -463,41 +463,43 @@ export class AlianGrid extends Rectangle {
                 if (tPassed > this.shootInterval) {
                     this.lastTry2Shoot = now;
                     const canFireList = [];
-                    this.objects.forEach((alian, index) => {
-                        if (this.CanFire(alian))
+                    this.objects.forEach((alien, index) => {
+                        if (this.CanFire(alien))
                             canFireList.push(index);
                     });
                     if (canFireList.length > 0) {
-                        const selectedAlianIndex2Fire = canFireList[Math.floor(canFireList.length * Math.random())];
-                        this.objects[selectedAlianIndex2Fire].Shoot(this.objects[selectedAlianIndex2Fire]);
+                        const selectedAlienIndex2Fire = canFireList[Math.floor(canFireList.length * Math.random())];
+                        this.objects[selectedAlienIndex2Fire].Shoot(this.objects[selectedAlienIndex2Fire]);
                     }
                 }
             }
         }
     }
 }
-export class AlianShoot extends Rectangle {
-    constructor(x, y, w, h, color) {
+export class AlienShoot extends Rectangle {
+    constructor(x, y, model, sprite) {
         super();
         this.x = x;
         this.y = y;
-        this.width = w;
-        this.height = h;
+        this.width = 9;
+        this.height = 21;
         this.top = y;
-        this.bottom = y + h;
+        this.bottom = y + this.height;
         this.left = x;
-        this.right = x + w;
-        this.yV = 250; //250;
-        this.color = color;
-        this.conceded = false;
-        this.type = 'AlianShoot';
-        this.wentOut;
-        this.enabled = true;
+        this.right = x + this.width;
+        this.yV = 250;
+        this.type = 'AlienShoot';
+        this.model = model;
+        this.sprite = sprite;
+        this.frameCount = 2;
+        this.framePerSec = 12;
+        this.repeat = 0;
         this.onExplode = () => {};
     }
     Update(objects) {
         if (this.enabled) {
             this.UpdateLocation();
+            this.UpdateSprite();
             this.Check4Collision(objects);
         }
     }
@@ -570,7 +572,7 @@ export class Explosion extends Rectangle {
         this.UpdateSprite();
     }
 }
-export class AlianExplosion extends Rectangle {
+export class AlienExplosion extends Rectangle {
     constructor(x, y, w, h, sprite) {
         super();
         this.x = x;
@@ -581,7 +583,7 @@ export class AlianExplosion extends Rectangle {
         this.bottom = y + h;
         this.left = x;
         this.right = x + w;
-        this.type = 'AlianExplosion';
+        this.type = 'AlienExplosion';
         this.enabled = true;
         this.sprite = sprite;
         this.collidable = false;
@@ -659,9 +661,13 @@ export class Shield extends Rectangle {
         if (r >= 0 && r < 16 && c >= 0 && c < 20) {
             let blockIndex = 5 * parseInt(r / 4) + parseInt(c / 4);
             let shieldBlock = this.objects[blockIndex];
-            let ii = (r % 4) * 4 + (c % 4)
-            shieldBlock.objects[ii].enabled = false;
+            let index = (r % 4) * 4 + (c % 4)
+            shieldBlock.objects[index].enabled = false;
         }
+        this.onAddExplosionFragment(this.x + c * 3, this.y + r * 3);
+
+    }
+    AddExplosionFragment(x, y) {
     }
 }
 
@@ -834,5 +840,22 @@ export class SpaceshipExplosion extends Rectangle {
     }
     Update() {
         this.UpdateSprite();
+    }
+}
+export class ExplosionFragment extends Rectangle {
+    constructor(x, y, color) {
+        super();
+        this.x = x;
+        this.y = y;
+        this.width = 3;
+        this.height = 3;
+        this.top = y;
+        this.bottom = y + this.height;
+        this.left = x;
+        this.right = x + this.width;
+        this.type = 'ExplosionFragment';
+        this.animate = false;
+        this.collidable = false;
+        this.color = color;
     }
 }
