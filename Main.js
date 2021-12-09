@@ -1,4 +1,6 @@
-import { Game, World, Wall, Text, Shooter, Alien, LaserShoot, TopExplosion, AlienGrid, AlienShoot, Explosion, AlienExplosion, Shield, ShieldBlock, ShieldDot, ShooterExplosion, Spaceship, SpaceshipExplosion, ExplosionFragment } from './Game.js';
+import { Game, World, Wall, Text, Shooter, Alien, LaserShoot, TopExplosion, AlienGrid,
+	AlienShoot,	Explosion, AlienExplosion, Shield, ShieldBlock, ShieldDot, ShooterExplosion,
+	Spaceship, SpaceshipExplosion, ExplosionFragment } from './Game.js';
 import { Display } from './Display.js';
 import { Controller } from './Controller.js';
 
