@@ -62,9 +62,9 @@ let shields = [];
 let blankDots = [];
 let gameStarted = false;
 let highScore = 0;
-let press2layBlinkingTimer = 0;
+let press2PlayBlinkingTimer = 0;
 let gameData = { HighScore: 0 } ;
-
+let pauseEnabled = true;
 let scoreTitle;
 let scoreText;
 let hightScoreTitle;
@@ -181,7 +181,7 @@ function ShowStartPage(c) {
 
 	game.objects.push(world);
 
-	press2layBlinkingTimer = setInterval(() => {
+	press2PlayBlinkingTimer = setInterval(() => {
 		t12.enabled = !t12.enabled;
 	}, 700);
 
@@ -278,6 +278,7 @@ function StartGame(c) {
 		point: 30,
 		Shoot: (alien) => {
 			let shootModel = Math.floor(1 + Math.random() * 3);
+			//shootModel = 2;
 			let sprite;
 			if (shootModel === 1)
 				sprite = sprites.alienShoot1
@@ -399,8 +400,6 @@ function StartGame(c) {
 	game.objects.push(world);
 
 	PlayGame();
-
-	console.log(shooters)
 }
 function CreateAliens(config) {
 	AddAlienRow(config);
@@ -532,8 +531,6 @@ function ShootLaser() {
 	}
 }
 
-let pauseEnabled = true;
-
 function Run() {
 	//console.time('Render');
 	window.requestAnimationFrame(Run);
@@ -559,10 +556,12 @@ function Run() {
 					shooter.moveRight();
 				if (controller.isPressed('ArrowLeft'))
 					shooter.moveLeft();
+				/*
 				if (controller.isPressed('ArrowUp'))
 					shooter.y -= 4;
 				if (controller.isPressed('ArrowDown'))
 					shooter.y += 4;
+				*/
 			}
 			if (controller.isPressed(' '))
 				ShootLaser();
@@ -570,7 +569,7 @@ function Run() {
 	} else {
 		if (controller.isPressed(' ')) {
 			controller.ClearBuffer();
-			clearInterval(press2layBlinkingTimer);
+			clearInterval(press2PlayBlinkingTimer);
 			
 			PopObjectFromWorld(()=> {
 				setTimeout(() => {
