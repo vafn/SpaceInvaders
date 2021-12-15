@@ -146,6 +146,7 @@ export class Text extends GameObject {
         this.font = font;
         this.centerAligned = centerAligned;
         this.movable = false;
+        this.collidable = false;
     }
 }
 export class Shooter extends Rectangle {
@@ -228,6 +229,7 @@ export class Alien extends Rectangle {
         this.grid;
         this.point = 0;
         this.Shoot;
+        this.Damage2Shield = 1;
         this.onExplode = () => {};
 
         if (typeof config !== 'undefined') {
@@ -295,7 +297,8 @@ export class Alien extends Rectangle {
                         );
                         destObj.Explode(destObj);
                     } else if (destObj.type === 'ShieldDot') {
-                        destObj.parent.CollisionAt(destObj.row, destObj.col);
+                        //destObj.parent.CollisionAt(destObj.row, destObj.col, this.type);
+                        destObj.enabled = false;
                     }
                 }
             }
@@ -319,7 +322,7 @@ export class LaserShoot extends Rectangle {
     constructor(x, y, w, h, color) {
         super();
         this.x = x;
-        this.y = 600;
+        this.y = y;
         this.width = w;
         this.height = h;
         this.top = y;
@@ -332,6 +335,7 @@ export class LaserShoot extends Rectangle {
         this.type = 'LaserShoot';
         this.wentOut;
         this.enabled = false;
+        this.Damage2Shield = 2;
     }
     Update(objects) {
         if (this.enabled) {
@@ -352,14 +356,15 @@ export class LaserShoot extends Rectangle {
         }
     }
     Check4Collision(objects){
-        objects.forEach((destObj) => {
+        objects.every((destObj, aaa, bbb, cccc) => {
             if (destObj.enabled && destObj.collidable && destObj !== this) {
                 if (this.isColid(destObj)) {
                     if (destObj.type === 'ShieldBlock') 
                         for (let d=0; d < destObj.objects.length; d++)
                             destObj.objects[d].collidable = true;
                     if (destObj.type === 'Alien') {
-                        this.enabled = false;
+                        this.enabled = false;  
+                        this.yV = 0;
                         destObj.Explode();
                         destObj.dispatcher.dispatchEvent(
                             new CustomEvent('AnAlienKilled', { detail: {
@@ -370,17 +375,21 @@ export class LaserShoot extends Rectangle {
                     } else if (destObj.type === 'ShieldDot') {
                         this.enabled = false;
                         this.yV = 0;
-                        destObj.parent.CollisionAt(destObj.row, destObj.col);
+                        destObj.parent.CollisionAt(destObj.row, destObj.col, this.type);
+                        return false;
                     } else if (destObj.type === 'AlienShoot') {
                         this.enabled = false;
+                        this.yV = 0;
                         destObj.Explode(this.top, ExplosionType.Round);
                     } else if (destObj.type === 'Spaceship') {
                         this.enabled = false;
+                        this.yV = 0;
                         destObj.Explode(this.top, ExplosionType.Round);
                     }
                 }
             }
-        });
+            return true;
+        }, this);
     }
     isColid(obj2Check) {
         if (this.x >= obj2Check.x + obj2Check.width || this.x + this.width <= obj2Check.x || this.y >= obj2Check.y + obj2Check.height || this.y + this.height <= obj2Check.y)
@@ -516,10 +525,9 @@ export class AlienShoot extends Rectangle {
         }
     }
     Check4Collision(objects){
-        objects.forEach((destObj) => {
+        objects.every((destObj) => {
             if (destObj.enabled && destObj.collidable && destObj !== this) {
                 if (this.isColid(destObj)) {
-
                     if (destObj.type === 'ShieldBlock')
                         for (let d = 0; d < destObj.objects.length; d++)
                             destObj.objects[d].collidable = true;
@@ -528,14 +536,17 @@ export class AlienShoot extends Rectangle {
                         this.enabled = false;
 						this.Garbage = true;
                         destObj.Explode();
+                        return false;
                     } else if (destObj.type === 'ShieldDot') {
                         this.enabled = false;
                         this.yV = 0;
-                        destObj.parent.CollisionAt(destObj.row, destObj.col);
+                        destObj.parent.CollisionAt(destObj.row, destObj.col, this.type, this.model);
+                        return false;
                     }
                 }
             }
-        });
+            return true;
+        }, this);
     }
     isColid(obj2Check) {
         if (this.x >= obj2Check.x + obj2Check.width || this.x + this.width <= obj2Check.x || this.y >= obj2Check.y + obj2Check.height || this.y + this.height <= obj2Check.y)
@@ -623,7 +634,8 @@ export class Shield extends Rectangle {
         this.right = this.x + this.width;
         this.bottom = this.y + this.height;
     }
-    CollisionAt(blockRow, blockCol, dotRow, dotCol) {
+    CollisionAt(blockRow, blockCol, dotRow, dotCol, hitBy, alienShootModel) {
+        //console.log('Shield: ' + hitBy)
         this.objects.forEach((shieldBlck, index) => {
             shieldBlck.collidable = false;
             shieldBlck.objects.forEach((dot, index) => {
@@ -634,27 +646,49 @@ export class Shield extends Rectangle {
         let row = blockRow * 4 + dotRow;
         let col = blockCol * 4 + dotCol;
 
-        for (let r = row - 1; r <= row + 1; r++)
-            for (let c = col - 1; c <= col + 1; c++)
-                this.TurnoffDotAt(r, c);
+        if (hitBy === 'Alian') {
+            //this.TurnoffDotAt(row, col);
+        } else if (hitBy === 'LaserShoot') {
+            for (let r = 15; r > row; r--) { //Find first collision point (laser fast movement)
+                let blockIndex = 5 * parseInt(r / 4) + parseInt(col / 4);
+                let shieldBlock = this.objects[blockIndex];
+                let index = (r % 4) * 4 + (col % 4)
+                if (shieldBlock.objects[index].enabled) {
+                    row = r;
+                    break;
+                }
+            }                
+            this.TurnoffDotAt(row, col);
+            if (Math.random() > 0.5)
+                this.TurnoffDotAt(row, col + 1);
+            if (Math.random() > 0.5)
+                this.TurnoffDotAt(row, col - 1);
+        } else if (hitBy === 'AlienShoot') {
+            if (alienShootModel > 1) {
+                for (let r = row; r <= row + 6; r++){
+                    this.TurnoffDotAt(r, col);
+                    this.TurnoffDotAt(r, col + (Math.random() > 0.5 ? 1 : -1));
+                }
+                row += 6;
+            }
+            for (let r = row - 1; r <= row + 1; r++)
+                for (let c = col - 1; c <= col + 1; c++)
+                    this.TurnoffDotAt(r, c);
 
-        for (let r = row - 2; r <= row + 2; r++)
-            for (let c = col - 2; c <= col + 2; c++)
-                if (r < row - 1 || r > row + 1 || c < col - 1 || c > col + 1)
-                    if (Math.random() > 0.5)
-                        this.TurnoffDotAt(r, c);
-    
-        for (let r = row - 3; r <= row + 3; r++)
-            for (let c = col - 3; c <= col + 3; c++)
-                if (r < row - 2 || r > row + 2 || c < col - 2 || c > col + 2)
-                    if (Math.random() > 0.8)
-                        this.TurnoffDotAt(r, c);
-
+            for (let r = row - 2; r <= row + 2; r++)
+                for (let c = col - 2; c <= col + 2; c++)
+                    if (r < row - 1 || r > row + 1 || c < col - 1 || c > col + 1)
+                        if (Math.random() > 0.3)
+                            this.TurnoffDotAt(r, c);
+        
+            for (let r = row - 3; r <= row + 3; r++)
+                for (let c = col - 3; c <= col + 3; c++)
+                    if (r < row - 2 || r > row + 2 || c < col - 2 || c > col + 2)
+                        if (Math.random() > 0.3)
+                            this.TurnoffDotAt(r, c);
+        }
         this.objects.forEach(shieldBlock => {
             shieldBlock.collidable = true;
-            shieldBlock.objects.forEach(shieldDot => {
-                shieldDot.collidable = false;
-            });        
         });
     }
     TurnoffDotAt(r, c) {
@@ -693,8 +727,8 @@ export class ShieldBlock extends Rectangle {
         this.right = this.x + this.width;
         this.bottom = this.y + this.height;
     }
-    CollisionAt(row, col) {
-        this.parent.CollisionAt(this.row, this.col, row, col);
+    CollisionAt(row, col, hitBy, model) {
+        this.parent.CollisionAt(this.row, this.col, row, col, hitBy, model);
     };
 }
 export class ShieldDot extends Rectangle {
