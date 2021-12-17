@@ -1,8 +1,9 @@
-import { Game, World, Wall, Text, Shooter, Alien, LaserShoot, TopExplosion, AlienGrid,
-	AlienShoot,	Explosion, AlienExplosion, Shield, ShieldBlock, ShieldDot, ShooterExplosion,
-	Spaceship, SpaceshipExplosion, ExplosionFragment } from './Game.js';
+import { Game, World, Wall, Text, Shooter, Invader, LaserShoot, TopExplosion, InvaderGrid,
+	InvaderShoot,	Explosion, InvaderExplosion, Shield, ShieldBlock, ShieldDot, ShooterExplosion,
+	UFO, UFOExplosion, ExplosionFragment } from './Game.js';
 import { Display } from './Display.js';
 import { Controller } from './Controller.js';
+import { SoundManager } from './SoundManager.js';
 
 export const ExplosionType = {Round: 1, FlatBottom: 2};
 const green = '#69C42B';	//#00B098
@@ -16,9 +17,8 @@ let shooter = null;
 let laserShoot = null;
 let topExplosion = null;
 let shooterExplosion = null;
-let p1Score = null;
 let gamePaused = false;
-let  aliens = [];
+let  invaders = [];
 const evtDispatcher = new EventTarget();
 let docWidth = 0;
 let docHeight = 0;
@@ -26,7 +26,7 @@ let waveNo = 1;
 const firstWaveY = 164;
 const waveStartX = 92;
 const waveAdvance = 36;
-const alienDefalutXV = 10;
+const invaderDefalutXV = 10;
 const images = new Image();
 const sprites = {
 	squid: { x: 22, y: 1, sWidth: 8, sHeight: 8, dWidth: 24, dHeight: 24, frames: [0, 1], spriteSheet: images },
@@ -36,28 +36,41 @@ const sprites = {
 	greenShooter: { x: 1, y: 10, sWidth: 13, sHeight: 8, dWidth: 39, dHeight: 24, frames: [0], spriteSheet: images },
 	topExplosion: { x: 73, y: 1, sWidth: 8, sHeight: 8, dWidth: 24, dHeight: 24, frames: [0, 1], spriteSheet: images },
 	explosion: { x: 82, y: 1, sWidth: 8, sHeight: 8, dWidth: 24, dHeight: 24, frames: [0, 1], spriteSheet: images },
-	alienExplosion: { x: 91, y: 1, sWidth: 13, sHeight: 8, dWidth: 39, dHeight: 24, frames: [0], spriteSheet: images },
+	invaderExplosion: { x: 91, y: 1, sWidth: 13, sHeight: 8, dWidth: 39, dHeight: 24, frames: [0], spriteSheet: images },
 	shooterExplosion: { x: 105, y: 1, sWidth: 16, sHeight: 8, dWidth: 48, dHeight: 24, frames: [0, 1], spriteSheet: images },
-	spaceship: { x: 56, y: 1, sWidth: 16, sHeight: 8, dWidth: 48, dHeight: 24, frames: [0], spriteSheet: images },
-	spaceshipWhite: { x: 56, y: 10, sWidth: 16, sHeight: 8, dWidth: 48, dHeight: 24, frames: [0], spriteSheet: images },
-	spaceshipExplosion: { x: 122, y: 1, sWidth: 21, sHeight: 8, dWidth: 63, dHeight: 24, frames: [0], spriteSheet: images },
-	alienShoot1: { x: 144, y: 1, sWidth: 3, sHeight: 7, dWidth: 9, dHeight: 21, frames: [0, 1, 2, 3], spriteSheet: images },
-	alienShoot2: { x: 148, y: 1, sWidth: 3, sHeight: 7, dWidth: 9, dHeight: 21, frames: [0, 1, 2, 3], spriteSheet: images },
-	alienShoot3: { x: 152, y: 1, sWidth: 3, sHeight: 7, dWidth: 9, dHeight: 21, frames: [0, 1, 2, 3, 4], spriteSheet: images }
+	ufo: { x: 56, y: 1, sWidth: 16, sHeight: 8, dWidth: 48, dHeight: 24, frames: [0], spriteSheet: images },
+	ufoWhite: { x: 56, y: 10, sWidth: 16, sHeight: 8, dWidth: 48, dHeight: 24, frames: [0], spriteSheet: images },
+	ufoExplosion: { x: 122, y: 1, sWidth: 21, sHeight: 8, dWidth: 63, dHeight: 24, frames: [0], spriteSheet: images },
+	invaderShoot1: { x: 144, y: 1, sWidth: 3, sHeight: 7, dWidth: 9, dHeight: 21, frames: [0, 1, 2, 3], spriteSheet: images },
+	invaderShoot2: { x: 148, y: 1, sWidth: 3, sHeight: 7, dWidth: 9, dHeight: 21, frames: [0, 1, 2, 3], spriteSheet: images },
+	invaderShoot3: { x: 152, y: 1, sWidth: 3, sHeight: 7, dWidth: 9, dHeight: 21, frames: [0, 1, 2, 3, 4], spriteSheet: images }
+}
+const sounds = {
+	laserShoot: { sound: null, filePath: 'Sounds/LaserShoot.wav' },
+	invaderKilled: { sound: null, filePath: 'Sounds/InvaderKilled.wav' },
+	ufo: { sound: null, filePath: 'Sounds/UFO.wav' },
+	ufoExplosion: {sound: null, filePath: 'Sounds/UFOExplosion.wav' },
+	shooterExplosion: {sound: null, filePath: 'Sounds/ShooterExplosion.wav' },
+	invaders: [
+		{ sound: null, filePath: 'Sounds/Invader1.wav' },
+		{ sound: null, filePath: 'Sounds/Invader2.wav' },
+		{ sound: null, filePath: 'Sounds/Invader3.wav' },
+		{ sound: null, filePath: 'Sounds/Invader4.wav' }
+	]
 }
 const worlConfig = {
 	world: { width: 669, height: 727 },
 	shooter: { width: 39, height: 24 },
 	laserShoot: { width: 3, height: 24, color: 'white' },
-	alienShoot: { width: 3, height: 24, color: 'white' }
+	invaderShoot: { width: 3, height: 24, color: 'white' }
 };
-let liveAliens = 0;
-let alienGrid = new AlienGrid(5, 11);
+let liveInvaders = 0;
+let invaderGrid = new InvaderGrid(5, 11);
 let lives = 3;
 let points = 0;
 let shooters = [];
 let livesCountText = null;
-let spaceship = null;
+let ufo = null;
 let shields = [];
 let blankDots = [];
 let gameStarted = false;
@@ -69,6 +82,10 @@ let scoreTitle;
 let scoreText;
 let hightScoreTitle;
 let hightScoreText;
+let soundManager = new SoundManager(sounds);
+let invaderFramePerSec = 1.3;
+let heartBitInvader;
+let invaderSoundBitIndex = 0;
 
 images.onload = () => {
 	///
@@ -130,10 +147,10 @@ function ShowStartPage(c) {
 	const t11 = new Text(center, 480, '= 10 POINTS', 'white', false, 24, 'Arial', true);
 	const t12 = new Text(center, 550, 'PRESS SPACE TO PLAY', 'white', false, 24, 'Arial', true);
 
-	const spaceship = new Spaceship(center - 125, 355, 48, 24, 0, world.width, sprites.spaceshipWhite);
-	spaceship.enabled = true;
+	const ufo = new UFO(center - 125, 355, 48, 24, 0, world.width, sprites.ufoWhite);
+	ufo.enabled = true;
 
-	let alienConfig = {
+	let invaderConfig = {
 		race: 'Squid',
 		x: center - 100,
 		y: 395,
@@ -142,25 +159,25 @@ function ShowStartPage(c) {
 		sprite: sprites.squid,
 		frameCount: 1
 	};
-	const squid = new Alien(alienConfig);
+	const squid = new Invader(invaderConfig);
 
-	alienConfig = {
+	invaderConfig = {
 		race: 'Crab',
 		x: center - 110,
 		y: 435,
 		width: 33,
 		sprite: sprites.crab,
 	};
-	const crab = new Alien(alienConfig);
+	const crab = new Invader(invaderConfig);
 
-	alienConfig = {
+	invaderConfig = {
 		race: 'Octopus',
 		x: center - 115,
 		y: 475,
 		width: 36,
 		sprite: sprites.octopus,
 	};
-	const octopus = new Alien(alienConfig);
+	const octopus = new Invader(invaderConfig);
 	
 	world.objects.push(t1);
 	world.objects.push(t2);
@@ -170,7 +187,7 @@ function ShowStartPage(c) {
 	world.objects.push(t6);
 	world.objects.push(t7);
 	world.objects.push(t8);
-	world.objects.push(spaceship);
+	world.objects.push(ufo);
 	world.objects.push(t9);
 	world.objects.push(squid);
 	world.objects.push(t10);
@@ -187,13 +204,14 @@ function ShowStartPage(c) {
 
 }
 function StartGame(c) {
-	alienGrid.Reset();
+	invaderGrid.Reset();
 	waveNo = 1;
 	game.objects = [];
-	aliens = [];
+	invaders = [];
 	shooters = [];
 	lives = 3;
 	points = 0;
+	invaderFramePerSec = 1.3;
 	gameStarted = true;
 	gamePaused = false;
 	world = new World(0, 0, c.world.width, c.world.height);
@@ -208,30 +226,33 @@ function StartGame(c) {
 	laserShoot = new LaserShoot(0, 0, c.laserShoot.width, c.laserShoot.height, 'white');
 	topExplosion = new TopExplosion(0, 83, 22, 26, sprites.topExplosion);
 	shooterExplosion = new ShooterExplosion(world.left + (world.width - c.shooter.width) / 2, 629, 48, 24, sprites.shooterExplosion);
-	//p1Score = new Text(world.left + world.width * 1 / 4, 10, 'SCORE: 0', 'white', true, 24, 'Arial', true);
 	livesCountText = new Text(25, world.height - 30, lives, green, true, 32, 'Arial', true);
-	spaceship = new Spaceship(0, firstWaveY - 2 * 24, 48, 24, 100, world.width, sprites.spaceship);
-	spaceship.onExplode = (ashoot, impactTop) => {
-		UpdatePoints(spaceship.point);
-		const spaceshipExplosion = new SpaceshipExplosion(spaceship.left + spaceship.width / 2 - sprites.spaceshipExplosion.dWidth / 2, spaceship.top, 24, 24, sprites.spaceshipExplosion);
-		world.objects.push( spaceshipExplosion);
+	ufo = new UFO(0, firstWaveY - 2 * 24, 48, 24, 100, world.width, sprites.ufo);
+	ufo.onExplode = (ashoot, impactTop) => {
+		soundManager.Play(sounds.ufoExplosion);
+		UpdatePoints(ufo.point);
+		const ufoExplosion = new UFOExplosion(ufo.left + ufo.width / 2 - sprites.ufoExplosion.dWidth / 2, ufo.top, 24, 24, sprites.ufoExplosion);
+		world.objects.push( ufoExplosion);
 		setTimeout(() => {
-			spaceshipExplosion.enabled = false;
-			spaceshipExplosion.Garbage = true;
+			ufoExplosion.enabled = false;
+			ufoExplosion.Garbage = true;
 
-			const spaceshipPoints = new Text(spaceship.left + spaceship.width / 2, spaceshipExplosion.top, spaceship.point, 'red', true, 28, 'Arial', true);
-			world.objects.push(spaceshipPoints);
+			const ufoPoints = new Text(ufo.left + ufo.width / 2, ufoExplosion.top, ufo.point, 'red', true, 28, 'Arial', true);
+			world.objects.push(ufoPoints);
 			setTimeout(() => {
-				spaceshipPoints.enabled = false;
-				spaceshipPoints.Garbage = true;
+				ufoPoints.enabled = false;
+				ufoPoints.Garbage = true;
 			}, 1000);
 
 		}, 500);
-		
 	}
-	spaceship.ResetToReappear();
+	ufo.sound = new Audio(sounds.ufo.fileBlob);
+	ufo.sound.loop = true;
+	ufo.ResetToReappear();
 
 	shooter.onExplode =  (shooter) => {
+		controller.ClearBuffer();
+		soundManager.Play(sounds.shooterExplosion);
 		shooterExplosion.x = shooter.x + (shooter.width - shooterExplosion.width) /2;
 		shooterExplosion.y = shooter.y;
 		shooterExplosion.lastFrameChangedTime = new Date().getTime();
@@ -253,6 +274,24 @@ function StartGame(c) {
 		if (lives === 0)
 			GameOver();
 	}
+	shooter.onShoot =  () => {
+		if (!laserShoot.enabled) {
+			soundManager.Play(sounds.laserShoot);
+			laserShoot.lastUpdate = new Date().getTime();
+			laserShoot.enabled = true;
+			laserShoot.x = shooter.left + shooter.width / 2 - laserShoot.width / 2;
+			laserShoot.y = shooter.y - laserShoot.height;
+			laserShoot.yV = -1000;
+	
+			world.objects.forEach(gObj => {
+				if (gObj instanceof ShieldBlock)
+					gObj.collidable = true;
+				if (gObj instanceof ShieldDot)
+					gObj.collidable = false;
+			});
+		}
+	}
+
 	for (let sIndex = 0; sIndex < lives - 1; sIndex++) {
 		shooters[sIndex] = new Shooter(60  + sIndex * (c.shooter.width + 5), world.bottom - c.shooter.height - 2, c.shooter.width, c.shooter.height, sprites.greenShooter);
 		world.objects.push(shooters[sIndex]);
@@ -260,46 +299,35 @@ function StartGame(c) {
 	
 	world.dispatcher = evtDispatcher;
 
-	let alienConfig = {
+	let invaderConfig = {
 		index: 0,
-		type: 'Alien',
+		type: 'Invader',
 		race: 'Squid',
 		x: waveStartX + (32 - 22) / 2,
 		y: firstWaveY,
 		width: 24,
 		height: 24,
-		xV: alienDefalutXV,
+		xV: invaderDefalutXV,
 		yV: 0,
 		dispatcher: evtDispatcher,
 		sprite: sprites.squid,
 		frameCount: 2,
-		framePerSec: 1.3,
-		grid: alienGrid,
+		framePerSec: invaderFramePerSec,
+		grid: invaderGrid,
 		point: 30,
-		Shoot: (alien) => {
+		Shoot: (invader) => {
 			let shootModel = Math.floor(1 + Math.random() * 3);
-			//shootModel = 2;
 			let sprite;
+			let frameCount = 4;
 			if (shootModel === 1)
-				sprite = sprites.alienShoot1
+				sprite = sprites.invaderShoot1
 			else if (shootModel === 2)
-				sprite = sprites.alienShoot2
-			else if (shootModel === 3)
-				sprite = sprites.alienShoot3
-			const aShoot = new AlienShoot(alien.left + (alien.width / 2) - c.alienShoot.width / 2, alien.y + alien.height, shootModel, sprite);
-			if (shootModel === 1) {
-				aShoot.frameCount = 4;
-				aShoot.framePerSec = 20;
-				//aShoot.yV = 50;
-			} else if (shootModel === 2) {
-				aShoot.frameCount = 4;
-				aShoot.framePerSec = 20;
-				//aShoot.yV = 50;
-			} else if (shootModel === 3) {
-				aShoot.frameCount = 5;
-				aShoot.framePerSec = 20;
-				//aShoot.yV = 50;
+				sprite = sprites.invaderShoot2
+			else if (shootModel === 3) {
+				sprite = sprites.invaderShoot3
+				frameCount = 5;
 			}
+			const aShoot = new InvaderShoot(invader.left + (invader.width / 2) - c.invaderShoot.width / 2, invader.y + invader.height, shootModel, frameCount, sprite);
 		aShoot.onExplode = (ashoot, impactTop, explosionType) => {
 				let explosion;
 				if (explosionType === ExplosionType.FlatBottom)
@@ -321,8 +349,20 @@ function StartGame(c) {
 			world.objects.push(aShoot);
 		}
 	};
-	CreateAliens(alienConfig);
-	alienGrid.objects = aliens;
+	CreateInvaders(invaderConfig);
+	invaderGrid.objects = invaders;
+
+	heartBitInvader = new Invader(invaderConfig);
+	heartBitInvader.x = 0;
+	heartBitInvader.y = -50;
+	heartBitInvader.xV = 0;
+	heartBitInvader.onFrameChanged = () => {
+		if (!gamePaused) {
+			soundManager.Play(sounds.invaders[invaderSoundBitIndex]);
+			if (++invaderSoundBitIndex > 3)
+				invaderSoundBitIndex = 0;
+		}
+	}
 
 	topExplosion.onAnimateEnd = () => {
 		setTimeout(() => {
@@ -352,7 +392,7 @@ function StartGame(c) {
 				const shieldBlockX = shieldX + c * 12;
 				const shieldBlockY = shieldY + r * 12;
 				const shieldBlock = new ShieldBlock(shieldBlockX, shieldBlockY, shields[shieldNo], r, c);
-				shields[shieldNo].objects[blockIndex] = shieldBlock;
+				shields[shieldNo].objects[blockIndex] = shieldBlock;1
 				world.objects.push(shieldBlock);
 
 				let dotIndex = 0;
@@ -388,90 +428,93 @@ function StartGame(c) {
 	world.objects.push(scoreText);
 	world.objects.push(hightScoreTitle);
 	world.objects.push(hightScoreText);
-	world.objects.push(alienGrid);
+	world.objects.push(invaderGrid);
+	world.objects.push(heartBitInvader);
 	world.objects.push(wallBottom);
 	world.objects.push(shooter);
 	world.objects.push(laserShoot);
 	world.objects.push(topExplosion);
 	world.objects.push(shooterExplosion);
-	//world.objects.push(p1Score);
 	world.objects.push(livesCountText);
-	world.objects.push(spaceship);
+	world.objects.push(ufo);
 	game.objects.push(world);
 
 	PlayGame();
 }
-function CreateAliens(config) {
-	AddAlienRow(config);
+function CreateInvaders(config) {
+	AddInvaderRow(config);
 	config.x = waveStartX;
 	config.race = 'Crab';
 	config.sprite = sprites.crab;
 	config.width = 32;
 	config.y += 48;
 	config.point = 20;
-	AddAlienRow(config);
+	AddInvaderRow(config);
 	config.y += 48;
-	AddAlienRow(config);
+	AddInvaderRow(config);
 	config.race = 'Octopus';
 	config.sprite = sprites.octopus;
 	config.width = 36;
 	config.y += 48;
 	config.point = 10;
-	AddAlienRow(config);
+	AddInvaderRow(config);
 	config.y += 48;
-	AddAlienRow(config);
-	liveAliens = aliens.length;
+	AddInvaderRow(config);
+	liveInvaders = invaders.length;
 }
-function AddAlienRow(config) {
+function AddInvaderRow(config) {
 	let xBak = config.x;
 	for (let index = 0; index < 11; index++) {
-		const alien = new Alien(config);
-		alien.onExplode = (alien) => {
-			const x = alien.left + alien.width / 2 - 39 / 2;
-			const y = alien.top + alien.height / 2 - 24 / 2;
-			const alienExplosion = new AlienExplosion(x, y, 39, 24, sprites.alienExplosion);
-			alienExplosion.animate = false;
-			alienExplosion.xV = alien.xV;
+		const invader = new Invader(config);
+		invader.onExplode = (invader) => {
+			const x = invader.left + invader.width / 2 - 39 / 2;
+			const y = invader.top + invader.height / 2 - 24 / 2;
+			const invaderExplosion = new InvaderExplosion(x, y, 39, 24, sprites.invaderExplosion);
+			invaderExplosion.animate = false;
+			invaderExplosion.xV = invader.xV;
 			setTimeout(() => {
-				alienExplosion.enabled = false
-				alienExplosion.Garbage = true;
+				invaderExplosion.enabled = false
+				invaderExplosion.Garbage = true;
 			}, 200);
-			world.objects.push(alienExplosion);
+			world.objects.push(invaderExplosion);
 		}
-		world.objects.push(alien);
-		aliens.push(alien);
+		world.objects.push(invader);
+		invaders.push(invader);
 		config.x += 36 + 9;
 		config.index++;
 	}
 	config.x = xBak;
 }
-function SendNextAliensWave() {
+function SendNextInvadersWave() {
 	waveNo++;
 	let now = new Date().getTime();
 	for (let row = 0; row < 5; row++)
 		for (let col = 0; col < 11; col++) {
-			let alien = aliens[row * 11 + col];
-			alien.framePerSec = 1.3;
-			alien.y = firstWaveY + waveAdvance * (waveNo - 1) + row * 48;
-			alien.x = col * (36 + 12);
-			alien.xV = alienDefalutXV;
-			alien.lastUpdate = now;
-			alien.enabled = true;
+			let invader = invaders[row * 11 + col];
+			invader.framePerSec = invaderFramePerSec;
+			invader.y = firstWaveY + waveAdvance * (waveNo - 1) + row * 48;
+			invader.x = col * (36 + 12);
+			invader.xV = invaderDefalutXV;
+			invader.lastUpdate = now;
+			invader.enabled = true;
 		}
-	liveAliens = aliens.length;
-	alienGrid.Reset();
+	liveInvaders = invaders.length;
+	invaderGrid.Reset();
 }
 function AddEvents() {
 	window.addEventListener('resize', () => Resize(canvas, world));
-	evtDispatcher.addEventListener('AnAlienKilled', (event) => {
+	evtDispatcher.addEventListener('AnInvaderKilled', (event) => {
+		soundManager.Play(sounds.invaderKilled);
 		UpdatePoints(event.detail.point);
-		alienGrid.SetAlienKilled(event.detail.alienIndex);
-		const speed = --liveAliens > 0 ? Math.sign(aliens[0].xV) * (0.8 + 450 / liveAliens ** 0.9705) : 0;
-		aliens.forEach((alien) => {
-			alien.xV = speed;
-			alien.framePerSec *= 1.05;
+		invaderGrid.SetInvaderKilled(event.detail.invaderIndex);
+		const speed = --liveInvaders > 0 ? Math.sign(invaders[0].xV) * (0.8 + 450 / liveInvaders ** 0.9705) : 0;
+		invaderFramePerSec *= 1.05;
+		invaders.forEach((invader) => {
+			invader.xV = speed;
+			invader.framePerSec = invaderFramePerSec;
 		});
-		alienGrid.shootInterval = 1000 - 500 * (55 - liveAliens) / 54;
+		heartBitInvader.framePerSec = invaderFramePerSec;
+		invaderGrid.shootInterval = 1000 - 500 * (55 - liveInvaders) / 54;
 	});
 }
 function Resize(canvas, world) {
@@ -491,7 +534,6 @@ function UpdatePoints(point) {
 	points += point;
 	if (parseInt(points / 1000) !== pBak)
 		IncreaseLive();
-	//p1Score.text = 'SCORE: ' + points;
 	scoreText.text = points;
 	if (points > highScore) {
 		highScore = points;
@@ -512,23 +554,6 @@ function BuildRAFPolyfill() {
 				cb(+new Date());
 			}, 1000 / 60);
 		};
-}
-function ShootLaser() {
-	if (!laserShoot.enabled) {
-		laserShoot.lastUpdate = new Date().getTime();
-		laserShoot.enabled = true;
-		laserShoot.x = shooter.left + shooter.width / 2 - laserShoot.width / 2;
-		laserShoot.y = shooter.y - laserShoot.height;
-		laserShoot.yV = -1000;
-
-		world.objects.forEach(gObj => {
-			if (gObj instanceof ShieldBlock)
-				gObj.collidable = true;
-			if (gObj instanceof ShieldDot)
-				gObj.collidable = false;
-		});
-
-	}
 }
 
 function Run() {
@@ -564,7 +589,7 @@ function Run() {
 				*/
 			}
 			if (controller.isPressed(' '))
-				ShootLaser();
+				shooter.Shoot();
 		}
 	} else {
 		if (controller.isPressed(' ')) {
@@ -584,15 +609,15 @@ function Run() {
 
 	if (gameStarted && !gamePaused) {
 
-		if (!aliens.some(gObj => gObj.enabled)) {
+		if (!invaders.some(gObj => gObj.enabled)) {
 			world.objects.forEach((gObj) => {
-				//if (gObj instanceof AlienExplosion)
+				//if (gObj instanceof InvaderExplosion)
 					//gObj.enabled = false;
 			});
 
 			for (let index = world.objects.length - 1; index >= 0; index--) {
 				const gObj = world.objects[index];
-				if (gObj instanceof AlienShoot) {
+				if (gObj instanceof InvaderShoot) {
 					gObj.enabled = false;
 					world.objects.splice(index, 1);
 				}
@@ -602,15 +627,18 @@ function Run() {
 			setTimeout(() => {
 				gamePaused = false;
 				ResetShields();
-				SendNextAliensWave();	
-			}, 800);
+				invaderFramePerSec = 1.3;
+				SendNextInvadersWave();
+				heartBitInvader.framePerSec = invaderFramePerSec;
+				heartBitInvader.lastUpdate = new Date().getTime();
+				}, 800);
 			
 		}
 
 		let distToRight = 10000;
 		let distToLeft = 10000;
 		
-		aliens.forEach(gObj => {
+		invaders.forEach(gObj => {
 			if (gObj.enabled) {
 				if (world.right - gObj.right < distToRight)
 					distToRight = world.right - gObj.right;
@@ -620,18 +648,18 @@ function Run() {
 		});
 
 		if (distToLeft < 0 || distToRight < 0) {
-			aliens.forEach(alien => {
-				alien.xV = -alien.xV;
-				alien.y += alien.height;
+			invaders.forEach(invader => {
+				invader.xV = -invader.xV;
+				invader.y += invader.height;
 				if (distToRight < 0)
-					alien.x += distToRight;
+					invader.x += distToRight;
 				else if (distToLeft < 0)
-					alien.x -= distToLeft;
+					invader.x -= distToLeft;
 			});
 
 			world.objects.forEach(gObj => {
 				if (gObj.enabled) {
-					if (gObj instanceof AlienExplosion){
+					if (gObj instanceof InvaderExplosion){
 						gObj.xV = -gObj.xV;
 						gObj.y += gObj.height * 0.2;
 					}
@@ -646,7 +674,7 @@ function Run() {
 			shooter.x = world.right - shooter.width
 
 		if (laserShoot.y < 103) {
-			if (!topExplosion.enabled) {
+			if (!topExplosion.enabled && laserShoot.enabled) {
 				topExplosion.lastFrameChangedTime = new Date().getTime();
 				topExplosion.frameIndex = 0;
 				topExplosion.enabled = true;
@@ -663,9 +691,9 @@ function Run() {
         if (gObj.Garbage)
 			world.objects.splice(index, 1);
         else if (gameStarted && gObj.enabled) {
-			if (gObj instanceof AlienShoot && gObj.bottom > wallBottom.y)
+			if (gObj instanceof InvaderShoot && gObj.bottom > wallBottom.y)
 				gObj.Explode(wallBottom.y, ExplosionType.FlatBottom);
-			else if (gObj instanceof Alien && gObj.bottom > shooter.top && shooter.enabled) {
+			else if (gObj instanceof Invader && gObj.bottom > shooter.top && shooter.enabled) {
 				lives = 1;
 				shooter.Explode();
 			}
@@ -689,25 +717,25 @@ function Render() {
 				display.drawText(gObj);
 			else if (gObj instanceof Shooter)
 				display.drawSprite(gObj);
-			else if (gObj instanceof Alien)
+			else if (gObj instanceof Invader)
 				display.drawSprite(gObj);
 			else if (gObj instanceof TopExplosion)
 				display.drawSprite(gObj);
 			else if (gObj instanceof LaserShoot)
 				display.drawBox(gObj);
-			else if (gObj instanceof AlienShoot)
+			else if (gObj instanceof InvaderShoot)
 				display.drawSprite(gObj);
 			else if (gObj instanceof Explosion)
 				display.drawSprite(gObj);
-			else if (gObj instanceof AlienExplosion)
+			else if (gObj instanceof InvaderExplosion)
 				display.drawSprite(gObj);
 			else if (gObj instanceof ShieldDot)
 				display.drawBox(gObj);
 			else if (gObj instanceof ShooterExplosion)
 				display.drawSprite(gObj);
-			else if (gObj instanceof Spaceship)
+			else if (gObj instanceof UFO)
 				display.drawSprite(gObj);
-			else if (gObj instanceof SpaceshipExplosion)
+			else if (gObj instanceof UFOExplosion)
 				display.drawSprite(gObj);
 			else if (gObj instanceof ExplosionFragment)
 				display.drawBox(gObj);
@@ -737,11 +765,16 @@ function UpdateLivesCountText()  {
 	livesCountText.text = lives.toString();
 }
 function GameOver() {
+	invaderFramePerSec = 1.3;
+	heartBitInvader.framePerSec = invaderFramePerSec;
+	invaders.forEach((invader) => {
+		invader.framePerSec = invaderFramePerSec;
+	});
 	PauseGame()
 	laserShoot.enabled = false;
 	for (let index = world.objects.length - 1; index >= 0; index--) {
 		const gObj = world.objects[index];
-        if (gObj instanceof AlienShoot) {
+        if (gObj instanceof InvaderShoot) {
 			gObj.enabled = false;
 			world.objects.splice(index, 1);
 		}
